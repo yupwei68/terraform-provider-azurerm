@@ -13,6 +13,7 @@ import (
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/blob/blobs"
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/blob/containers"
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/file/directories"
+	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/file/files"
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/file/shares"
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/queue/queues"
 	"github.com/tombuildsstuff/giovanni/storage/2018-11-09/table/entities"
@@ -96,6 +97,18 @@ func (client Client) ContainersClient(ctx context.Context, resourceGroup, accoun
 	containersClient := containers.NewWithEnvironment(client.environment)
 	containersClient.Client.Authorizer = storageAuth
 	return &containersClient, nil
+}
+
+func (client Client) FilesClient(ctx context.Context, resourceGroup, accountName string) (*files.Client, error) {
+	accountKey, err := client.findAccountKey(ctx, resourceGroup, accountName)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving Account Key: %s", err)
+	}
+
+	storageAuth := authorizers.NewSharedKeyLiteAuthorizer(accountName, *accountKey)
+	filesClient := files.NewWithEnvironment(client.environment)
+	filesClient.Client.Authorizer = storageAuth
+	return &filesClient, nil
 }
 
 func (client Client) FileShareDirectoriesClient(ctx context.Context, resourceGroup, accountName string) (*directories.Client, error) {
