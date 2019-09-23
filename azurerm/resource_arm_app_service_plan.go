@@ -61,9 +61,13 @@ func resourceArmAppServicePlan() *schema.Resource {
 				DiffSuppressFunc: suppress.CaseDifference,
 			},
 
+			// Remove in 2.0
 			"sku": {
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
+				Computed: true,
+				Deprecated:    "This property has been deprecated in favour of the 'sku_name' property and will be removed in version 2.0 of the provider", 
+				ConflictsWith: []string{"sku_name"},
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -82,6 +86,25 @@ func resourceArmAppServicePlan() *schema.Resource {
 						},
 					},
 				},
+			},
+
+			"sku_name": { 
+				Type:          schema.TypeString, 
+				Optional:      true, 
+				Computed:      true, // Remove computed in 2.0 
+				ConflictsWith: []string{"sku"}, 
+				ValidateFunc: azure.MinCapacitySkuNameInSlice([]string{ 
+					string(web.SkuNameBasic), 
+					string(web.SkuNameDynamic), 
+					string(web.SkuNameElasticIsolated), 
+					string(web.SkuNameElasticPremium), 
+					string(web.SkuNameFree), 
+					string(web.SkuNameIsolated), 
+					string(web.SkuNamePremium), 
+					string(web.SkuNamePremiumV2), 
+					string(web.SkuNameShared), 
+					string(web.SkuNameStandard), 
+				}, 1, false), 
 			},
 
 			"properties": {
