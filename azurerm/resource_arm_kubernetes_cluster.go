@@ -1479,7 +1479,7 @@ func expandKubernetesClusterNetworkProfile(d *schema.ResourceData) (*containerse
 }
 
 func expandLoadBalancerProfile(d []interface{}, loadBalancerType string) (*containerservice.ManagedClusterLoadBalancerProfile, error) {
-	if d == nil || len(d) == 0 {
+	if len(d) == 0 {
 		return nil, nil
 	}
 
