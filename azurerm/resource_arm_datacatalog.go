@@ -59,7 +59,27 @@ func resourceArmDatacatalog() *schema.Resource {
 			},
 
 			"admin": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"upn": {
+							Type:     schema.TypeString,
+							Optional: true,
+							//todo validate email
+						},
+						"object_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+							//todo validate gUID
+						},
+					},
+				},
+			},
+
+			"user": {
+				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
 				Elem: &schema.Resource{
@@ -111,11 +131,6 @@ func resourceArmDatacatalogCreateUpdate(d *schema.ResourceData, meta interface{}
 		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
 		ADCCatalogProperties: &datacatalog.ADCCatalogProperties{
 			Sku: datacatalog.SkuType(d.Get("sku").(string)),
-			Admins: &[]datacatalog.Principals{
-				{
-					Upn: utils.String(d.Get("admin.0.upn").(string)),
-				},
-			},
 		},
 	}
 
