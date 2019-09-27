@@ -6,7 +6,7 @@ import (
 )
 
 type Client struct {
-	BuildCatalogsClient func(string) *datacatalog.ADCCatalogsClient
+	CatalogsClient func(string) *datacatalog.ADCCatalogsClient
 }
 
 func BuildClient(o *common.ClientOptions) *Client {
@@ -17,6 +17,6 @@ func BuildClient(o *common.ClientOptions) *Client {
 	}
 
 	return &Client{
-		BuildCatalogsClient: BuildCatalogsClient,
+		CatalogsClient: BuildCatalogsClient,
 	}
 }

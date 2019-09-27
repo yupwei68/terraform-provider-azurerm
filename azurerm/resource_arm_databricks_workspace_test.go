@@ -164,6 +164,9 @@ func TestAccAzureRMDatabricksWorkspace_complete(t *testing.T) {
 
 func testCheckAzureRMDatabricksWorkspaceExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		client := testAccProvider.Meta().(*ArmClient).databricks.WorkspacesClient
+		ctx := testAccProvider.Meta().(*ArmClient).StopContext
+
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
 			return fmt.Errorf("Bad: Not found: %s", resourceName)
@@ -175,9 +178,7 @@ func testCheckAzureRMDatabricksWorkspaceExists(resourceName string) resource.Tes
 			return fmt.Errorf("Bad: No resource group found in state for Databricks Workspace: %s", workspaceName)
 		}
 
-		conn := testAccProvider.Meta().(*ArmClient).databricks.WorkspacesClient
-		ctx := testAccProvider.Meta().(*ArmClient).StopContext
-		resp, err := conn.Get(ctx, resourceGroup, workspaceName)
+		resp, err := client.Get(ctx, resourceGroup, workspaceName)
 		if err != nil {
 			return fmt.Errorf("Bad: Getting Workspace: %+v", err)
 		}
@@ -191,7 +192,7 @@ func testCheckAzureRMDatabricksWorkspaceExists(resourceName string) resource.Tes
 }
 
 func testCheckAzureRMDatabricksWorkspaceDestroy(s *terraform.State) error {
-	conn := testAccProvider.Meta().(*ArmClient).databricks.WorkspacesClient
+	client := testAccProvider.Meta().(*ArmClient).databricks.WorkspacesClient
 	ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
 	for _, rs := range s.RootModule().Resources {
@@ -201,7 +202,7 @@ func testCheckAzureRMDatabricksWorkspaceDestroy(s *terraform.State) error {
 
 		workspaceName := rs.Primary.Attributes["name"]
 		resourceGroup := rs.Primary.Attributes["resource_group_name"]
-		resp, err := conn.Get(ctx, resourceGroup, workspaceName)
+		resp, err := client.Get(ctx, resourceGroup, workspaceName)
 
 		if err != nil {
 			return nil

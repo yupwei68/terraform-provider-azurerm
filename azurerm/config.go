@@ -21,6 +21,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/containers"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/cosmos"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/databricks"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datacatalog"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datafactory"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datalake"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/devspace"
@@ -97,6 +98,7 @@ type ArmClient struct {
 	containers       *containers.Client
 	cosmos           *cosmos.Client
 	databricks       *databricks.Client
+	dataCatalog      *datacatalog.Client
 	dataFactory      *datafactory.Client
 	datalake         *datalake.Client
 	devSpace         *devspace.Client
@@ -226,6 +228,7 @@ func getArmClient(authConfig *authentication.Config, skipProviderRegistration bo
 	client.containers = containers.BuildClient(o)
 	client.cosmos = cosmos.BuildClient(o)
 	client.databricks = databricks.BuildClient(o)
+	client.dataCatalog = datacatalog.BuildClient(o)
 	client.dataFactory = datafactory.BuildClient(o)
 	client.datalake = datalake.BuildClient(o)
 	client.devSpace = devspace.BuildClient(o)
