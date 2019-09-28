@@ -12,18 +12,43 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
 )
 
-func TestAccAzureRMDatacatalog_basic(t *testing.T) {
+func TestAccAzureRMDataCatalog(t *testing.T) {
+	// NOTE: this is a combined test rather than separate split out tests due to
+	// Azure only being able provision against one data catalog at a time
+	testCases := map[string]map[string]func(t *testing.T){
+		"basic": {
+			"basic":    testAccAzureRMDatacatalog_basic,
+			"import":   testAccAzureRMDatacatalog_requiresImport,
+			"complete": testAccAzureRMDatacatalog_complete,
+		},
+	}
+
+	for group, m := range testCases {
+		m := m
+		t.Run(group, func(t *testing.T) {
+			for name, tc := range m {
+				tc := tc
+				t.Run(name, func(t *testing.T) {
+					tc(t)
+				})
+			}
+		})
+	}
+}
+
+
+func testAccAzureRMDatacatalog_basic(t *testing.T) {
 	rn := "azurerm_datacatalog.test"
 	ri := tf.AccRandTimeInt()
 	pw := "p@$$wR2" + acctest.RandStringFromCharSet(7, acctest.CharSetAlphaNum)
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testCheckAzureRMDatacatalogDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAzureRMDatacatalog_basic(ri, testLocation(), pw),
+				Config: testAccAzureRMDatacatalog_basicConfig(ri, testLocation(), pw),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDatacatalogExists(rn),
 				),
@@ -37,7 +62,7 @@ func TestAccAzureRMDatacatalog_basic(t *testing.T) {
 	})
 }
 
-func TestAccAzureRMDatacatalog_requiresImport(t *testing.T) {
+func testAccAzureRMDatacatalog_requiresImport(t *testing.T) {
 	if !features.ShouldResourcesBeImported() {
 		t.Skip("Skipping since resources aren't required to be imported")
 		return
@@ -53,14 +78,50 @@ func TestAccAzureRMDatacatalog_requiresImport(t *testing.T) {
 		CheckDestroy: testCheckAzureRMDatacatalogDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAzureRMDatacatalog_basic(ri, testLocation(), pw),
+				Config: testAccAzureRMDatacatalog_basicConfig(ri, testLocation(), pw),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDatacatalogExists(rn),
 				),
 			},
 			{
-				Config:      testAccAzureRMDatacatalog_requiresImport(ri, testLocation(), pw),
+				Config:      testAccAzureRMDatacatalog_requiresImportConfig(ri, testLocation(), pw),
 				ExpectError: testRequiresImportError("azurerm_datacatalog"),
+			},
+		},
+	})
+}
+
+func testAccAzureRMDatacatalog_complete(t *testing.T) {
+	rn := "azurerm_datacatalog.test"
+	ri := tf.AccRandTimeInt()
+	pw := "p@$$wR2" + acctest.RandStringFromCharSet(7, acctest.CharSetAlphaNum)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testCheckAzureRMDatacatalogDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAzureRMDatacatalog_basicConfig(ri, testLocation(), pw),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMDatacatalogExists(rn),
+				),
+			},
+			{
+				ResourceName:      rn,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: testAccAzureRMDatacatalog_completeConfig(ri, testLocation(), pw),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMDatacatalogExists(rn),
+				),
+			},
+			{
+				ResourceName:      rn,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -117,7 +178,7 @@ func testCheckAzureRMDatacatalogDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccAzureRMDatacatalog_basic(rInt int, location, pw string) string {
+func testAccAzureRMDatacatalog_basicConfig(rInt int, location, pw string) string {
 	return fmt.Sprintf(`
 resource "azurerm_resource_group" "test" {
   name     = "acctestRG-%[1]d"
@@ -147,8 +208,8 @@ resource "azurerm_datacatalog" "test" {
 `, rInt, location, pw)
 }
 
-func testAccAzureRMDatacatalog_requiresImport(rInt int, location, pw string) string {
-	template := testAccAzureRMDatacatalog_basic(rInt, location, pw)
+func testAccAzureRMDatacatalog_requiresImportConfig(rInt int, location, pw string) string {
+	template := testAccAzureRMDatacatalog_basicConfig(rInt, location, pw)
 	return fmt.Sprintf(`
 %s
 
@@ -159,4 +220,56 @@ resource "azurerm_datacatalog" "import" {
   sku                 = "${azurerm_datacatalog.test.sku}"
 }
 `, template)
+}
+
+func testAccAzureRMDatacatalog_completeConfig(rInt int, location, pw string) string {
+	return fmt.Sprintf(`
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%[1]d"
+  location = "%[2]s"
+}
+
+data "azuread_domains" "tenant_domain" {
+  only_initial = true
+}
+
+resource "azuread_user" "test" {
+  user_principal_name = "acctest-DCUser.%[1]d@${data.azuread_domains.tenant_domain.domains.0.domain_name}"
+  display_name        = "acctestDCUser-%[1]d"
+  password            = "%[3]s"
+}
+
+resource "azuread_user" "test2" {
+  user_principal_name = "acctest-DCUser2.%[1]d@${data.azuread_domains.tenant_domain.domains.0.domain_name}"
+  display_name        = "acctestDCUser2-%[1]d"
+  password            = "%[3]s"
+}
+
+resource "azuread_user" "test3" {
+  user_principal_name = "acctest-DCUser3.%[1]d@${data.azuread_domains.tenant_domain.domains.0.domain_name}"
+  display_name        = "acctestDCUser3-%[1]d"
+  password            = "%[3]s"
+}
+
+resource "azurerm_datacatalog" "test" {
+  name                             = "acctest-DC-%[1]d"
+  resource_group_name              = "${azurerm_resource_group.test.name}"
+  location                         = "${azurerm_resource_group.test.location}"
+  sku                              = "Free"
+  units                            = 30
+  enable_automatic_unit_adjustment = true
+
+  admin {
+    upn = "${azuread_user.test.user_principal_name}"
+  }
+
+  user {
+    upn = "${azuread_user.test2.user_principal_name}"
+  }
+
+  user {
+    upn = "${azuread_user.test3.user_principal_name}"
+  }
+}
+`, rInt, location, pw)
 }
