@@ -36,7 +36,6 @@ func TestAccAzureRMDataCatalog(t *testing.T) {
 	}
 }
 
-
 func testAccAzureRMDatacatalog_basic(t *testing.T) {
 	rn := "azurerm_datacatalog.test"
 	ri := tf.AccRandTimeInt()

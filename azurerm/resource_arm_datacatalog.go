@@ -65,13 +65,13 @@ func resourceArmDatacatalog() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"upn": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
 							ValidateFunc: validate.NoEmptyStrings,
 						},
 						"object_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
 							ValidateFunc: validate.UUID,
 						},
 					},
@@ -84,13 +84,13 @@ func resourceArmDatacatalog() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"upn": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
 							ValidateFunc: validate.NoEmptyStrings,
 						},
 						"object_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
 							ValidateFunc: validate.UUID,
 						},
 					},
@@ -129,10 +129,10 @@ func resourceArmDatacatalogCreateUpdate(d *schema.ResourceData, meta interface{}
 		Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
 		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
 		ADCCatalogProperties: &datacatalog.ADCCatalogProperties{
-			Sku: datacatalog.SkuType(d.Get("sku").(string)),
-			Units: utils.Int32(int32(d.Get("units").(int))),
-			Admins: expandDataCatalogPrincipals(d.Get("admin").([]interface{})),
-			Users: expandDataCatalogPrincipals(d.Get("user").([]interface{})),
+			Sku:                           datacatalog.SkuType(d.Get("sku").(string)),
+			Units:                         utils.Int32(int32(d.Get("units").(int))),
+			Admins:                        expandDataCatalogPrincipals(d.Get("admin").([]interface{})),
+			Users:                         expandDataCatalogPrincipals(d.Get("user").([]interface{})),
 			EnableAutomaticUnitAdjustment: utils.Bool(d.Get("enable_automatic_unit_adjustment").(bool)),
 		},
 	}
@@ -236,7 +236,7 @@ func expandDataCatalogPrincipals(input []interface{}) *[]datacatalog.Principals 
 			attrs := v.(map[string]interface{})
 			principal := datacatalog.Principals{
 				ObjectID: utils.String(attrs["object_id"].(string)),
-				Upn: utils.String(attrs["upn"].(string)),
+				Upn:      utils.String(attrs["upn"].(string)),
 			}
 			principals = append(principals, principal)
 		}
