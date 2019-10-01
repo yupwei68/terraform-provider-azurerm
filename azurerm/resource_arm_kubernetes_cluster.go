@@ -810,7 +810,10 @@ func resourceArmKubernetesClusterUpdate(d *schema.ResourceData, meta interface{}
 		return err
 	}
 	windowsProfile := expandKubernetesClusterWindowsProfile(d)
-	networkProfile := expandKubernetesClusterNetworkProfile(d)
+	networkProfile, err := expandKubernetesClusterNetworkProfile(d)
+	if err != nil {
+		return err
+	}
 	servicePrincipalProfile := expandAzureRmKubernetesClusterServicePrincipal(d)
 	addonProfiles := expandKubernetesClusterAddonProfiles(d)
 
@@ -821,6 +824,9 @@ func resourceArmKubernetesClusterUpdate(d *schema.ResourceData, meta interface{}
 
 	apiServerAuthorizedIPRangesRaw := d.Get("api_server_authorized_ip_ranges").(*schema.Set).List()
 	apiServerAuthorizedIPRanges := utils.ExpandStringSlice(apiServerAuthorizedIPRangesRaw)
+	apiServerAccessProfile := &containerservice.ManagedClusterAPIServerAccessProfile{
+		AuthorizedIPRanges: apiServerAuthorizedIPRanges,
+	}
 
 	nodeResourceGroup := d.Get("node_resource_group").(string)
 
@@ -831,19 +837,19 @@ func resourceArmKubernetesClusterUpdate(d *schema.ResourceData, meta interface{}
 		Name:     &name,
 		Location: &location,
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-			APIServerAuthorizedIPRanges: apiServerAuthorizedIPRanges,
-			AadProfile:                  azureADProfile,
-			AddonProfiles:               addonProfiles,
-			AgentPoolProfiles:           &agentProfiles,
-			DNSPrefix:                   utils.String(dnsPrefix),
-			EnableRBAC:                  utils.Bool(rbacEnabled),
-			KubernetesVersion:           utils.String(kubernetesVersion),
-			LinuxProfile:                linuxProfile,
-			WindowsProfile:              windowsProfile,
-			NetworkProfile:              networkProfile,
-			ServicePrincipalProfile:     servicePrincipalProfile,
-			NodeResourceGroup:           utils.String(nodeResourceGroup),
-			EnablePodSecurityPolicy:     utils.Bool(enablePodSecurityPolicy),
+			APIServerAccessProfile:  apiServerAccessProfile,
+			AadProfile:              azureADProfile,
+			AddonProfiles:           addonProfiles,
+			AgentPoolProfiles:       &agentProfiles,
+			DNSPrefix:               utils.String(dnsPrefix),
+			EnableRBAC:              utils.Bool(rbacEnabled),
+			KubernetesVersion:       utils.String(kubernetesVersion),
+			LinuxProfile:            linuxProfile,
+			WindowsProfile:          windowsProfile,
+			NetworkProfile:          networkProfile,
+			ServicePrincipalProfile: servicePrincipalProfile,
+			NodeResourceGroup:       utils.String(nodeResourceGroup),
+			EnablePodSecurityPolicy: utils.Bool(enablePodSecurityPolicy),
 		},
 		Tags: tags.Expand(t),
 	}
@@ -1495,11 +1501,13 @@ func expandLoadBalancerProfile(d []interface{}, loadBalancerType string) (*conta
 		managedOutboundIps = &containerservice.ManagedClusterLoadBalancerProfileManagedOutboundIPs{Count: &c}
 	}
 
-	if ipPrefixes := idsToResourceReferences(config["outbound_ip_prefixes_ids"]); ipPrefixes != nil {
+	ipPrefixesRaw := config["outbound_ip_prefixes_ids"].(*schema.Set).List()
+	if ipPrefixes := idsToResourceReferences(ipPrefixesRaw); ipPrefixes != nil {
 		outboundIpPrefixes = &containerservice.ManagedClusterLoadBalancerProfileOutboundIPPrefixes{PublicIPPrefixes: ipPrefixes}
 	}
 
-	if outIps := idsToResourceReferences(config["outbound_ip_address_ids"]); outIps != nil {
+	outIpsRaw := config["outbound_ip_address_ids"].(*schema.Set).List()
+	if outIps := idsToResourceReferences(outIpsRaw); outIps != nil {
 		outboundIps = &containerservice.ManagedClusterLoadBalancerProfileOutboundIPs{PublicIPs: outIps}
 	}
 
@@ -1508,26 +1516,6 @@ func expandLoadBalancerProfile(d []interface{}, loadBalancerType string) (*conta
 		OutboundIPPrefixes: outboundIpPrefixes,
 		OutboundIPs:        outboundIps,
 	}, nil
-}
-
-func idsToResourceReferences(set interface{}) *[]containerservice.ResourceReference {
-	if set == nil {
-		return nil
-	}
-
-	s := set.(*schema.Set)
-	results := make([]containerservice.ResourceReference, 0)
-
-	for _, element := range s.List() {
-		id := element.(string)
-		results = append(results, containerservice.ResourceReference{ID: &id})
-	}
-
-	if len(results) > 0 {
-		return &results
-	}
-
-	return nil
 }
 
 func flattenKubernetesClusterNetworkProfile(profile *containerservice.NetworkProfileType) []interface{} {
@@ -1557,37 +1545,37 @@ func flattenKubernetesClusterNetworkProfile(profile *containerservice.NetworkPro
 
 	lbProfiles := make([]interface{}, 0)
 	if profile.LoadBalancerProfile != nil {
-		lb := make(map[string]interface{})
-
-		if profile.LoadBalancerProfile.ManagedOutboundIPs != nil {
-			if profile.LoadBalancerProfile.ManagedOutboundIPs.Count != nil {
-				lb["managed_outbound_ips"] = profile.LoadBalancerProfile.ManagedOutboundIPs.Count
-			}
+		managedOutboundIPs := 0
+		if profile.LoadBalancerProfile.ManagedOutboundIPs != nil && profile.LoadBalancerProfile.ManagedOutboundIPs.Count != nil {
+			managedOutboundIPs = int(*profile.LoadBalancerProfile.ManagedOutboundIPs.Count)
 		}
 
+		outboundPublicIPAddressIDs := make([]string, 0)
 		if profile.LoadBalancerProfile.OutboundIPs != nil {
-			if profile.LoadBalancerProfile.OutboundIPs.PublicIPs != nil {
-				lb["outbound_ip_address_ids"] = profile.LoadBalancerProfile.OutboundIPs.PublicIPs
-			}
+			outboundPublicIPAddressIDs = resourceReferencesToIds(profile.LoadBalancerProfile.OutboundIPs.PublicIPs)
 		}
 
+		outboundPublicIPAddressPrefixIDs := make([]string, 0)
 		if profile.LoadBalancerProfile.OutboundIPPrefixes != nil {
-			if profile.LoadBalancerProfile.OutboundIPPrefixes.PublicIPPrefixes != nil {
-				lb["outbound_ip_prefixes_ids"] = profile.LoadBalancerProfile.OutboundIPPrefixes.PublicIPPrefixes
-			}
+			outboundPublicIPAddressPrefixIDs = resourceReferencesToIds(profile.LoadBalancerProfile.OutboundIPPrefixes.PublicIPPrefixes)
 		}
 
-		effectiveIps := make([]string, 0)
-
+		effectiveOutboundIPs := make([]string, 0)
 		if profile.LoadBalancerProfile.EffectiveOutboundIPs != nil {
 			for _, ip := range *profile.LoadBalancerProfile.EffectiveOutboundIPs {
 				if ip.ID != nil {
-					effectiveIps = append(effectiveIps, *ip.ID)
+					effectiveOutboundIPs = append(effectiveOutboundIPs, *ip.ID)
 				}
 			}
 		}
 
-		lb["effective_outbound_ips"] = effectiveIps
+		lb := map[string]interface{}{
+			"effective_outbound_ips":   effectiveOutboundIPs,
+			"managed_outbound_ips":     managedOutboundIPs,
+			"outbound_ip_address_ids":  outboundPublicIPAddressIDs,
+			"outbound_ip_prefixes_ids": outboundPublicIPAddressPrefixIDs,
+		}
+
 		lbProfiles = append(lbProfiles, lb)
 	}
 
@@ -1783,4 +1771,37 @@ func flattenKubernetesClusterKubeConfigAAD(config kubernetes.KubeConfigAAD) []in
 			"username":               name,
 		},
 	}
+}
+
+func idsToResourceReferences(input []interface{}) *[]containerservice.ResourceReference {
+	results := make([]containerservice.ResourceReference, 0)
+
+	for _, element := range input {
+		id := element.(string)
+		results = append(results, containerservice.ResourceReference{ID: &id})
+	}
+
+	if len(results) > 0 {
+		return &results
+	}
+
+	return nil
+}
+
+func resourceReferencesToIds(input *[]containerservice.ResourceReference) []string {
+	if input == nil {
+		return nil
+	}
+
+	results := make([]string, 0)
+
+	for _, element := range *input {
+		if element.ID == nil {
+			continue
+		}
+
+		results = append(results, *element.ID)
+	}
+
+	return results
 }
