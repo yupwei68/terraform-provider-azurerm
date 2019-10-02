@@ -48,7 +48,6 @@ func resourceArmImage() *schema.Resource {
 			"hyper_v_generation": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  string(compute.HyperVGenerationTypesV1),
 				ForceNew: true,
 				ValidateFunc: validation.StringInSlice([]string{
 					string(compute.HyperVGenerationTypesV1),
@@ -188,7 +187,6 @@ func resourceArmImageCreateUpdate(d *schema.ResourceData, meta interface{}) erro
 	name := d.Get("name").(string)
 	resGroup := d.Get("resource_group_name").(string)
 	zoneResilient := d.Get("zone_resilient").(bool)
-	hyperVGeneration := d.Get("hyper_v_generation").(string)
 
 	if features.ShouldResourcesBeImported() && d.IsNewResource() {
 		existing, err := client.Get(ctx, resGroup, name, "")
@@ -206,8 +204,10 @@ func resourceArmImageCreateUpdate(d *schema.ResourceData, meta interface{}) erro
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	expandedTags := tags.Expand(d.Get("tags").(map[string]interface{}))
 
-	properties := compute.ImageProperties{
-		HyperVGeneration: compute.HyperVGenerationTypes(hyperVGeneration),
+	properties := compute.ImageProperties{}
+
+	if v, ok := d.GetOk("hyper_v_generation"); ok {
+		properties.HyperVGeneration = compute.HyperVGenerationTypes(v.(string))
 	}
 
 	osDisk, err := expandAzureRmImageOsDisk(d)
