@@ -3,6 +3,7 @@ package azurerm
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/automation/mgmt/2015-10-31/automation"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -51,6 +52,17 @@ func resourceArmAutomationJobSchedule() *schema.Resource {
 				Type:     schema.TypeMap,
 				Optional: true,
 				ForceNew: true,
+				ValidateFunc: func(v interface{}, _ string) (warnings []string, errors []error) {
+					m := v.(map[string]interface{})
+
+					for k := range m {
+						if k != strings.ToLower(k) {
+							errors = append(errors, fmt.Errorf("due to a bug in implementation of Runbook Job Schedules in azure (https://github.com/Azure/azure-sdk-for-go/issues/4780) all parameters keys must be lowercase and key %q is not", k))
+						}
+					}
+
+					return warnings, errors
+				},
 			},
 
 			"run_on": {
@@ -176,7 +188,7 @@ func resourceArmAutomationJobScheduleRead(d *schema.ResourceData, meta interface
 	if v := resp.JobScheduleProperties.Parameters; v != nil {
 		jsParameters := make(map[string]interface{})
 		for key, value := range v {
-			jsParameters[key] = value
+			jsParameters[strings.ToLower(key)] = value
 		}
 		d.Set("parameters", jsParameters)
 	}

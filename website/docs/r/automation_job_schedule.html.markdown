@@ -40,6 +40,8 @@ The following arguments are supported:
 
 * `parameters` -  (Optional) A map of key/value pairs corresponding to the arguments that can be passed to the Runbook. Changing this forces a new resource to be created.
 
+~> **NOTE:** Due to a bug due to a bug in implementation of Runbook Job Schedules in azure (https://github.com/Azure/azure-sdk-for-go/issues/4780) all parameters keys must be lowercase.
+
 * `run_on` -  (Optional) Name of a Hybrid Worker Group the Runbook will be executed on. Changing this forces a new resource to be created.
 
 ## Attributes Reference
