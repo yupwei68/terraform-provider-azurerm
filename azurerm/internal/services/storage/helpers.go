@@ -7,14 +7,24 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/storage/mgmt/storage"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 )
 
 var (
+	// TODO: remove me
 	accountKeysCache        = map[string]string{}
 	resourceGroupNamesCache = map[string]string{}
-	writeLock               = sync.RWMutex{}
+
+	storageAccountsCache = map[string]accountDetails{}
+	writeLock            = sync.RWMutex{}
 )
+
+type accountDetails struct {
+	resourceGroup string
+	properties    *storage.AccountProperties
+	credentials   *storage.AccountListKeysResult
+}
 
 func (client Client) ClearFromCache(resourceGroup, accountName string) {
 	writeLock.Lock()
@@ -97,4 +107,57 @@ func (client Client) findAccountKey(ctx context.Context, resourceGroup, accountN
 	writeLock.Unlock()
 
 	return firstKey, nil
+}
+
+// TODO: we also need to fire an event to/back from the storage accounts resource that one's been added/removed
+func (client Client) ForceCache(accountName string, props *storage.AccountProperties) {
+	writeLock.Lock()
+	storageAccountsCache[accountName] = props
+	writeLock.Unlock()
+}
+
+func (client Client) RemoveAccountFromCache(accountName string) {
+	writeLock.Lock()
+	delete(storageAccountsCache, accountName)
+	writeLock.Unlock()
+}
+
+func (client Client) findAccount(ctx context.Context, accountName string) (*accountDetails, error) {
+	writeLock.Lock()
+	defer writeLock.Unlock()
+
+	if existing, ok := storageAccountsCache[accountName]; ok {
+		// if the resource group/credentials are nil, load them now?
+		storageAccountsCache[accountName] = accountName
+		return &existing, nil
+	}
+
+	accounts, err := client.AccountsClient.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving storage accounts: %+v", err)
+	}
+
+	if accounts.Value == nil {
+		return nil, fmt.Errorf("Error loading storage accounts: accounts was nil!")
+	}
+
+	for _, v := range *accounts.Value {
+		if v.Name == nil {
+			continue
+		}
+
+		// TODO: this won't work since we need to conditionally cache these at access time?!
+
+		storageAccountsCache[*v.Name] = &accountDetails{
+			resourceGroup: resourceGroup,
+			properties:    v,
+			credentials:   credentials,
+		}
+	}
+
+	if existing, ok := storageAccountsCache[accountName]; ok {
+		return &existing, nil
+	}
+
+	return nil, nil
 }
