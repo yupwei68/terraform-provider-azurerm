@@ -4,131 +4,79 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/2019-03-01/storage/mgmt/storage"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
+	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 )
 
 var (
-	// TODO: remove me
-	accountKeysCache        = map[string]string{}
-	resourceGroupNamesCache = map[string]string{}
-
 	storageAccountsCache = map[string]accountDetails{}
-	writeLock            = sync.RWMutex{}
+
+	accountsLock    = sync.RWMutex{}
+	credentialsLock = sync.RWMutex{}
 )
 
 type accountDetails struct {
-	resourceGroup string
-	properties    *storage.AccountProperties
-	credentials   *storage.AccountListKeysResult
+	ID            string
+	ResourceGroup string
+	Properties    *storage.AccountProperties
+
+	accountKey *string
+	name       string
 }
 
-func (client Client) ClearFromCache(resourceGroup, accountName string) {
-	writeLock.Lock()
+func (ad *accountDetails) AccountKey(ctx context.Context, client Client) (*string, error) {
+	credentialsLock.Lock()
 
-	log.Printf("[DEBUG] Removing Account %q (Resource Group %q) from the cache", accountName, resourceGroup)
-	accountCacheKey := fmt.Sprintf("%s-%s", resourceGroup, accountName)
-	delete(accountKeysCache, accountCacheKey)
-
-	resourceGroupsCacheKey := accountName
-	delete(resourceGroupNamesCache, resourceGroupsCacheKey)
-
-	log.Printf("[DEBUG] Removed Account %q (Resource Group %q) from the cache", accountName, resourceGroup)
-	writeLock.Unlock()
-}
-
-func (client Client) FindResourceGroup(ctx context.Context, accountName string) (*string, error) {
-	cacheKey := accountName
-	if v, ok := resourceGroupNamesCache[cacheKey]; ok {
-		return &v, nil
+	if ad.accountKey != nil {
+		return ad.accountKey, nil
 	}
 
-	log.Printf("[DEBUG] Cache Miss - looking up the resource group for storage account %q..", accountName)
-	writeLock.Lock()
-	accounts, err := client.AccountsClient.List(ctx)
+	log.Printf("[DEBUG] Cache Miss - looking up the account key for storage account %q..", ad.name)
+	props, err := client.AccountsClient.ListKeys(ctx, ad.ResourceGroup, ad.name)
 	if err != nil {
-		return nil, fmt.Errorf("Error listing Storage Accounts (to find Resource Group for %q): %s", accountName, err)
+		credentialsLock.Unlock()
+		return nil, fmt.Errorf("Error Listing Keys for Storage Account %q (Resource Group %q): %+v", ad.name, ad.ResourceGroup, err)
 	}
 
-	if accounts.Value == nil {
-		return nil, nil
-	}
-
-	var resourceGroup *string
-	for _, account := range *accounts.Value {
-		if account.Name == nil || account.ID == nil {
-			continue
-		}
-
-		if strings.EqualFold(accountName, *account.Name) {
-			id, err := azure.ParseAzureResourceID(*account.ID)
-			if err != nil {
-				return nil, fmt.Errorf("Error parsing ID for Storage Account %q: %s", accountName, err)
-			}
-
-			resourceGroup = &id.ResourceGroup
-			break
-		}
-	}
-
-	if resourceGroup != nil {
-		resourceGroupNamesCache[cacheKey] = *resourceGroup
-	}
-
-	writeLock.Unlock()
-
-	return resourceGroup, nil
-}
-
-func (client Client) findAccountKey(ctx context.Context, resourceGroup, accountName string) (*string, error) {
-	cacheKey := fmt.Sprintf("%s-%s", resourceGroup, accountName)
-	if v, ok := accountKeysCache[cacheKey]; ok {
-		return &v, nil
-	}
-
-	writeLock.Lock()
-	log.Printf("[DEBUG] Cache Miss - looking up the account key for storage account %q..", accountName)
-	props, err := client.AccountsClient.ListKeys(ctx, resourceGroup, accountName)
-	if err != nil {
-		return nil, fmt.Errorf("Error Listing Keys for Storage Account %q (Resource Group %q): %+v", accountName, resourceGroup, err)
-	}
-
-	if props.Keys == nil || len(*props.Keys) == 0 {
-		return nil, fmt.Errorf("Keys were nil for Storage Account %q (Resource Group %q): %+v", accountName, resourceGroup, err)
+	if props.Keys == nil || len(*props.Keys) == 0 || (*props.Keys)[0].Value == nil {
+		credentialsLock.Unlock()
+		return nil, fmt.Errorf("Keys were nil for Storage Account %q (Resource Group %q): %+v", ad.name, ad.ResourceGroup, err)
 	}
 
 	keys := *props.Keys
-	firstKey := keys[0].Value
+	ad.accountKey = keys[0].Value
 
-	accountKeysCache[cacheKey] = *firstKey
-	writeLock.Unlock()
+	credentialsLock.Unlock()
 
-	return firstKey, nil
+	return nil, nil
 }
 
-// TODO: we also need to fire an event to/back from the storage accounts resource that one's been added/removed
-func (client Client) ForceCache(accountName string, props *storage.AccountProperties) {
-	writeLock.Lock()
-	storageAccountsCache[accountName] = props
-	writeLock.Unlock()
+func (client Client) AddToCache(accountName string, props storage.Account) error {
+	accountsLock.Lock()
+	defer accountsLock.Unlock()
+
+	account, err := client.populateAccountDetails(accountName, props)
+	if err != nil {
+		return err
+	}
+
+	storageAccountsCache[accountName] = *account
+
+	return nil
 }
 
 func (client Client) RemoveAccountFromCache(accountName string) {
-	writeLock.Lock()
+	accountsLock.Lock()
 	delete(storageAccountsCache, accountName)
-	writeLock.Unlock()
+	accountsLock.Unlock()
 }
 
-func (client Client) findAccount(ctx context.Context, accountName string) (*accountDetails, error) {
-	writeLock.Lock()
-	defer writeLock.Unlock()
+func (client Client) FindAccount(ctx context.Context, accountName string) (*accountDetails, error) {
+	accountsLock.Lock()
+	defer accountsLock.Unlock()
 
 	if existing, ok := storageAccountsCache[accountName]; ok {
-		// if the resource group/credentials are nil, load them now?
-		storageAccountsCache[accountName] = accountName
 		return &existing, nil
 	}
 
@@ -146,13 +94,12 @@ func (client Client) findAccount(ctx context.Context, accountName string) (*acco
 			continue
 		}
 
-		// TODO: this won't work since we need to conditionally cache these at access time?!
-
-		storageAccountsCache[*v.Name] = &accountDetails{
-			resourceGroup: resourceGroup,
-			properties:    v,
-			credentials:   credentials,
+		account, err := client.populateAccountDetails(accountName, v)
+		if err != nil {
+			return nil, err
 		}
+
+		storageAccountsCache[*v.Name] = *account
 	}
 
 	if existing, ok := storageAccountsCache[accountName]; ok {
@@ -160,4 +107,23 @@ func (client Client) findAccount(ctx context.Context, accountName string) (*acco
 	}
 
 	return nil, nil
+}
+
+func (client Client) populateAccountDetails(accountName string, props storage.Account) (*accountDetails, error) {
+	if props.ID == nil {
+		return nil, fmt.Errorf("`id` was nil for Account %q", accountName)
+	}
+
+	accountId := *props.ID
+	id, err := ParseAccountID(accountId)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing %q as a Resource ID: %+v", accountId, err)
+	}
+
+	return &accountDetails{
+		name:          accountName,
+		ID:            accountId,
+		ResourceGroup: id.ResourceGroup,
+		Properties:    props.AccountProperties,
+	}, nil
 }
