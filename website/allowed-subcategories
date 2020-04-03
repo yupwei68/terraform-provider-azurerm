@@ -1,7 +1,6 @@
 API Management
 Analysis Services
 App Configuration
-App Platform
 App Service (Web Apps)
 Application Insights
 Authorization
@@ -20,6 +19,7 @@ DNS
 Data Explorer
 Data Factory
 Data Lake
+Data Share
 Database
 Database Migration
 Databricks
@@ -52,6 +52,7 @@ Redis
 Search
 Security Center
 Service Fabric
+Spring Cloud
 Storage
 Stream Analytics
 Template

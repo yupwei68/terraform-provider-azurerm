@@ -6,7 +6,7 @@ import (
 )
 
 type Client struct {
-	AccountClient                *datashare.AccountsClient
+	AccountClient *datashare.AccountsClient
 }
 
 func NewClient(o *common.ClientOptions) *Client {
@@ -14,6 +14,6 @@ func NewClient(o *common.ClientOptions) *Client {
 	o.ConfigureClient(&accountClient.Client, o.ResourceManagerAuthorizer)
 
 	return &Client{
-		AccountClient:                &accountClient,
+		AccountClient: &accountClient,
 	}
 }
