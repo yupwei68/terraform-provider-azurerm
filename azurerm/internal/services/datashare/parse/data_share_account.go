@@ -14,7 +14,7 @@ type DataShareAccountId struct {
 func DataShareAccountID(input string) (*DataShareAccountId, error) {
 	id, err := azure.ParseAzureResourceID(input)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse DataShareAccount ID %q: %+v", input, err)
+		return nil, fmt.Errorf("unable to parse DataShareAccount ID %q: %+v", input, err)
 	}
 
 	dataShareAccount := DataShareAccountId{
