@@ -38,7 +38,7 @@ The following attributes are exported:
 
 * `id` - The Data Share Account ID.
 
-* `tags` - A mapping of tags to assign to the resource.
+* `tags` - A mapping of tags assigned to the Data Share Account.
 
 ## Timeouts
 
