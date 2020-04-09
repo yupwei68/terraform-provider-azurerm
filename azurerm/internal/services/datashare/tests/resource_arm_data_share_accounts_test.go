@@ -88,7 +88,7 @@ func testCheckAzureRMDataShareAccountExists(resourceName string) resource.TestCh
 		ctx := acceptance.AzureProvider.Meta().(*clients.Client).StopContext
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
-			return fmt.Errorf("DataShare Account not found: %s", resourceName)
+			return fmt.Errorf("dataShare Account not found: %s", resourceName)
 
 		}
 		id, err := parse.DataShareAccountID(rs.Primary.ID)
@@ -97,9 +97,9 @@ func testCheckAzureRMDataShareAccountExists(resourceName string) resource.TestCh
 		}
 		if resp, err := client.Get(ctx, id.ResourceGroup, id.Name); err != nil {
 			if !utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("Bad: data_share account %q does not exist", id.Name)
+				return fmt.Errorf("bad: data_share account %q does not exist", id.Name)
 			}
-			return fmt.Errorf("Bad: Get on DataShareAccountClient: %+v", err)
+			return fmt.Errorf("bad: Get on DataShareAccountClient: %+v", err)
 		}
 		return nil
 	}
@@ -119,7 +119,7 @@ func testCheckAzureRMDataShareAccountDestroy(s *terraform.State) error {
 		}
 		if resp, err := client.Get(ctx, id.ResourceGroup, id.Name); err != nil {
 			if !utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("Bad: Get on data_share.accountClient: %+v", err)
+				return fmt.Errorf("bad: Get on data_share.accountClient: %+v", err)
 			}
 		}
 		return nil

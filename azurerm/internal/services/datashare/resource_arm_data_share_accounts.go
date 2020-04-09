@@ -2,7 +2,6 @@ package datashare
 
 import (
 	"fmt"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datashare/validate"
 	"log"
 	"time"
 
@@ -13,7 +12,9 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/location"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datashare/parse"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/datashare/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 	azSchema "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
@@ -74,7 +75,7 @@ func resourceArmDataShareAccountCreate(d *schema.ResourceData, meta interface{})
 		existing, err := client.Get(ctx, resourceGroup, name)
 		if err != nil {
 			if !utils.ResponseWasNotFound(existing.Response) {
-				return fmt.Errorf("Failure in checking for present of existing  DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
+				return fmt.Errorf("failure in checking for present of existing  DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 			}
 		}
 		if existing.ID != nil && *existing.ID != "" {
@@ -82,34 +83,35 @@ func resourceArmDataShareAccountCreate(d *schema.ResourceData, meta interface{})
 		}
 	}
 
-	accountProps := datashare.Account{
+	account := datashare.Account{
 		Identity: &datashare.Identity{
 			Type: "SystemAssigned",
 		},
-		Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
+		Location: utils.String(location.Normalize(d.Get("location").(string))),
 		Name:     utils.String(name),
 		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
-	future, err := client.Create(ctx, resourceGroup, name, accountProps)
+	future, err := client.Create(ctx, resourceGroup, name, account)
 	if err != nil {
-		return fmt.Errorf("Failure in creating DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
+		return fmt.Errorf("failure in creating DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
-		return fmt.Errorf("Failure in waiting on creating future for DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
+		return fmt.Errorf("failure in waiting on creating future for DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	resp, err := client.Get(ctx, resourceGroup, name)
 	if err != nil {
-		return fmt.Errorf("Failure in retrieving DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
+		return fmt.Errorf("failure in retrieving DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	if resp.ID == nil || *resp.ID == "" {
-		return fmt.Errorf("Cannot read DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
+		return fmt.Errorf("cannot read DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	d.SetId(*resp.ID)
+
 	return resourceArmDataShareAccountRead(d, meta)
 }
 
@@ -130,13 +132,12 @@ func resourceArmDataShareAccountRead(d *schema.ResourceData, meta interface{}) e
 			d.SetId("")
 			return nil
 		}
-		return fmt.Errorf("Failure in retrieving DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
+		return fmt.Errorf("failure in retrieving DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 	d.Set("name", id.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
-	if location := resp.Location; location != nil {
-		d.Set("location", azure.NormalizeLocation(*location))
-	}
+	d.Set("location", location.NormalizeNilable(resp.Location))
+
 	return tags.FlattenAndSet(d, resp.Tags)
 }
 
@@ -160,7 +161,7 @@ func resourceArmDataShareAccountUpdate(d *schema.ResourceData, meta interface{})
 
 	_, err = client.Update(ctx, id.ResourceGroup, id.Name, props)
 	if err != nil {
-		return fmt.Errorf("Failure in issuing update request for DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
+		return fmt.Errorf("failure in issuing update request for DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
 	return resourceArmDataShareAccountRead(d, meta)
@@ -178,12 +179,12 @@ func resourceArmDataShareAccountDelete(d *schema.ResourceData, meta interface{})
 
 	future, err := client.Delete(ctx, id.ResourceGroup, id.Name)
 	if err != nil {
-		return fmt.Errorf("Failure in deleting DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
+		return fmt.Errorf("failure in deleting DataShare Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
 	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
 		if !response.WasNotFound(future.Response()) {
-			return fmt.Errorf("Failure in waiting for DataShare Account %q (Resource Group %q) to be deleted: %+v", id.Name, id.ResourceGroup, err)
+			return fmt.Errorf("failure in waiting for DataShare Account %q (Resource Group %q) to be deleted: %+v", id.Name, id.ResourceGroup, err)
 		}
 	}
 	return nil
