@@ -138,6 +138,7 @@ func testAccAzureRMDataShareAccount_template(data acceptance.TestData) string {
 provider "azurerm" {
   features {}
 }
+
 resource "azurerm_resource_group" "test" {
   name     = "acctest-datashare-%d"
   location = "%s"
@@ -154,7 +155,6 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
   identity {
     type = "SystemAssigned"
   }
@@ -171,7 +171,6 @@ resource "azurerm_data_share_account" "import" {
   name                = azurerm_data_share_account.test.name
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
   identity {
     type = "SystemAssigned"
   }
@@ -188,7 +187,6 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
   identity {
     type = "SystemAssigned"
   }
@@ -209,7 +207,6 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
   identity {
     type = "SystemAssigned"
   }

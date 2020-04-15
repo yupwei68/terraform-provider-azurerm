@@ -33,6 +33,7 @@ func testAccDataSourceDataShareAccount_basic(data acceptance.TestData) string {
 	config := testAccAzureRMDataShareAccount_complete(data)
 	return fmt.Sprintf(`
 %s
+
 data "azurerm_data_share_account" "test" {
   name                = azurerm_data_share_account.test.name
   resource_group_name = azurerm_resource_group.test.name
