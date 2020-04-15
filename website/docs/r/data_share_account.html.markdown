@@ -22,6 +22,11 @@ resource "azurerm_data_share_account" "example" {
   name                = "example-dsa"
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
+
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = {
     foo = "bar"
   }
@@ -32,15 +37,35 @@ resource "azurerm_data_share_account" "example" {
 
 The following arguments are supported:
 
-* `location` - (Required) The Azure Region where the Data Share Account should exist. Changing this forces a new Data Share Account to be created.
-
 * `name` - (Required) The name which should be used for this Data Share Account. Changing this forces a new Data Share Account to be created.
 
 * `resource_group_name` - (Required) The name of the Resource Group where the Data Share Account should exist. Changing this forces a new Data Share Account to be created.
 
+* `location` - (Required) The Azure Region where the Data Share Account should exist. Changing this forces a new Data Share Account to be created.
+
+* `identity` - (Required) A `identity` block as defined below.
+
 ---
 
 * `tags` - (Optional) A mapping of tags which should be assigned to the Data Share Account.
+
+---
+
+A `identity` block supports the following:
+
+* `type` - (Required) Specifies the identity type of the Data Share Account. At this time the only allowed value is `SystemAssigned`.
+
+~> **NOTE:** The assigned `principal_id` and `tenant_id` can be retrieved after the identity `type` has been set to `SystemAssigned` and the Data Share Account has been created. More details are available below.
+
+---
+
+`identity` exports the following:
+
+* `principal_id` - The Principal ID for the Service Principal associated with the Identity of this Data Share Account.
+
+* `tenant_id` - The Tenant ID for the Service Principal associated with the Identity of this Data Share Account.
+
+-> You can access the Principal ID via `${azurerm_data_share_account.example.identity.0.principal_id}` and the Tenant ID via `${azurerm_data_share_account.example.identity.0.tenant_id}`
 
 ## Attributes Reference
 

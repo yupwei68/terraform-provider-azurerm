@@ -2,8 +2,12 @@ package validate
 
 import (
 	"fmt"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
+	"regexp"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 )
 
 func DatashareTags(i interface{}, k string) (warnings []string, errors []error) {
@@ -35,4 +39,10 @@ func DatashareTags(i interface{}, k string) (warnings []string, errors []error) 
 	}
 
 	return warnings, errors
+}
+
+func DataShareAccountName() schema.SchemaValidateFunc {
+	return validation.StringMatch(
+		regexp.MustCompile(`^[^<>%&:\\?/#*$^();,.\|+={}\[\]!~@]{3,90}$`), `Data share account name should have length of 3 - 90, and cannot contain <>%&:\?/#*$^();,.|+={}[]!~@.`,
+	)
 }

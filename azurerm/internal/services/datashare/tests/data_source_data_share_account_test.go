@@ -21,6 +21,8 @@ func TestAccDataSourceAzureRMDataShareAccount_basic(t *testing.T) {
 					testCheckAzureRMDataShareAccountExists(data.ResourceName),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.%", "1"),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.env", "Test"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.principal_id"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.tenant_id"),
 				),
 			},
 		},

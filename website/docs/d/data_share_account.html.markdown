@@ -37,7 +37,19 @@ In addition to the Arguments listed above - the following Attributes are exporte
 
 * `id` - The ID of the Data Share Account.
 
+* `identity` - A `identity` block as defined below.
+
 * `tags` - A mapping of tags assigned to the Data Share Account.
+
+---
+
+An `identity` block exports the following:
+
+* `principal_id` - The ID of the Principal (Client) in Azure Active Directory.
+
+* `tenant_id` - The ID of the Azure Active Directory Tenant.
+
+* `type` - The identity type of the Data Share Account.
 
 ## Timeouts
 

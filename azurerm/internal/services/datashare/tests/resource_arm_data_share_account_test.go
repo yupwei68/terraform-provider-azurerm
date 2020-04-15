@@ -24,6 +24,8 @@ func TestAccAzureRMDataShareAccount_basic(t *testing.T) {
 				Config: testAccAzureRMDataShareAccount_basic(data),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDataShareAccountExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.principal_id"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.tenant_id"),
 				),
 			},
 			data.ImportStep(),
@@ -64,6 +66,8 @@ func TestAccAzureRMDataShareAccount_complete(t *testing.T) {
 				Config: testAccAzureRMDataShareAccount_complete(data),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDataShareAccountExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.principal_id"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.tenant_id"),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.%", "1"),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.env", "Test"),
 				),
@@ -73,6 +77,8 @@ func TestAccAzureRMDataShareAccount_complete(t *testing.T) {
 				Config: testAccAzureRMDataShareAccount_update(data),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDataShareAccountExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.principal_id"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "identity.0.tenant_id"),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.%", "1"),
 					resource.TestCheckResourceAttr(data.ResourceName, "tags.env", "Stage"),
 				),
@@ -148,6 +154,10 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, template, data.RandomInteger)
 }
@@ -161,6 +171,10 @@ resource "azurerm_data_share_account" "import" {
   name                = azurerm_data_share_account.test.name
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, config)
 }
@@ -174,6 +188,11 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
+
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = {
     env = "Test"
   }
@@ -190,6 +209,11 @@ resource "azurerm_data_share_account" "test" {
   name                = "acctest-dsa-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
+
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = {
     env = "Stage"
   }
