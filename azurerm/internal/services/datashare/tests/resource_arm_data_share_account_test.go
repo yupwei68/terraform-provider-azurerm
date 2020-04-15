@@ -95,7 +95,6 @@ func testCheckAzureRMDataShareAccountExists(resourceName string) resource.TestCh
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
 			return fmt.Errorf("dataShare Account not found: %s", resourceName)
-
 		}
 		id, err := parse.DataShareAccountID(rs.Primary.ID)
 		if err != nil {
