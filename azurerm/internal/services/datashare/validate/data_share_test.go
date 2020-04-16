@@ -9,37 +9,37 @@ func TestDataShareAccountName(t *testing.T) {
 		valid bool
 	}{
 		{
-			name:  "test 1",
+			name:  "Invalid Character 1",
 			input: "DC\\",
 			valid: false,
 		},
 		{
-			name:  "test 2",
+			name:  "Invalid Character 2",
 			input: "[abc]",
 			valid: false,
 		},
 		{
-			name:  "test 3",
+			name:  "Valid Account Name",
 			input: "acc-test",
 			valid: true,
 		},
 		{
-			name:  "test 4",
+			name:  "Invalid Character 3",
 			input: "test&",
 			valid: false,
 		},
 		{
-			name:  "test 5",
+			name:  "Too Few Character",
 			input: "ab",
 			valid: false,
 		},
 		{
-			name:  "test 6",
+			name:  "Valid Account Name 2",
 			input: "aa-BB_88",
 			valid: true,
 		},
 		{
-			name:  "test 7",
+			name:  "Valid Account Name 3",
 			input: "aac-",
 			valid: true,
 		},

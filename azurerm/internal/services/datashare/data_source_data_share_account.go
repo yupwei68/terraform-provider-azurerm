@@ -74,7 +74,7 @@ func dataSourceArmDataShareAccountRead(d *schema.ResourceData, meta interface{})
 		}
 		return fmt.Errorf("failure in retrieving DataShare Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
-	if id := resp.ID; id != nil {
+	if resp.ID != nil {
 		d.SetId(*resp.ID)
 	}
 

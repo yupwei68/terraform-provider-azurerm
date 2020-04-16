@@ -19,7 +19,7 @@ func DatashareTags(i interface{}, k string) (warnings []string, errors []error) 
 
 	for k, v := range tagsMap {
 		if len(k) > 512 {
-			errors = append(errors, fmt.Errorf("the maximum length for a tag key is 512 characters: %q is %d characters", k, len(k)))
+			errors = append(errors, fmt.Errorf("the maximum length for a tag key is 512 characters: %q has %d characters", k, len(k)))
 			return warnings, errors
 		}
 
@@ -32,8 +32,9 @@ func DatashareTags(i interface{}, k string) (warnings []string, errors []error) 
 		if err != nil {
 			errors = append(errors, err)
 			return warnings, errors
-		} else if len(value) > 256 {
-			errors = append(errors, fmt.Errorf("the maximum length for a tag value is 256 characters: the value for %q is %d characters", k, len(value)))
+		}
+		if len(value) > 256 {
+			errors = append(errors, fmt.Errorf("the maximum length for a tag value is 256 characters: the value for %q has %d characters", k, len(value)))
 			return warnings, errors
 		}
 	}
