@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/Azure/azure-sdk-for-go/services/storagesync/mgmt/2019-02-01/storagesync"
+	"github.com/Azure/azure-sdk-for-go/services/storagesync/mgmt/2020-03-01/storagesync"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 )
 

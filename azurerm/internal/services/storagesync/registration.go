@@ -8,7 +8,7 @@ type Registration struct{}
 
 // Name is the name of this Service
 func (r Registration) Name() string {
-	return "Storage"
+	return "Storage Sync"
 }
 
 // SupportedDataSources returns the supported Data Sources supported by this Service
