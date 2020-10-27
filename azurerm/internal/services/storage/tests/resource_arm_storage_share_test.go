@@ -2,7 +2,9 @@ package tests
 
 import (
 	"fmt"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
@@ -22,6 +24,8 @@ func TestAccAzureRMStorageShare_basic(t *testing.T) {
 				Config: testAccAzureRMStorageShare_basic(data),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMStorageShareExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "deleted"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "remaining_retention_days"),
 				),
 			},
 			data.ImportStep(),
@@ -90,7 +94,8 @@ func TestAccAzureRMStorageShare_deleteAndRecreate(t *testing.T) {
 				Config: testAccAzureRMStorageShare_template(data),
 			},
 			{
-				Config: testAccAzureRMStorageShare_basic(data),
+				PreConfig: func() { time.Sleep(1 * time.Minute) },
+				Config:    testAccAzureRMStorageShare_basic(data),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMStorageShareExists(data.ResourceName),
 				),
@@ -222,6 +227,78 @@ func TestAccAzureRMStorageShare_largeQuota(t *testing.T) {
 	})
 }
 
+func TestAccAzureRMStorageShare_NFS(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_storage_share", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: testCheckAzureRMStorageShareDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAzureRMStorageShare_NFS(data),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMStorageShareExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "deleted"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "remaining_retention_days"),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccAzureRMStorageShare_NFSUpdate(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_storage_share", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: testCheckAzureRMStorageShareDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAzureRMStorageShare_NFS(data),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMStorageShareExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "deleted"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "remaining_retention_days"),
+				),
+			},
+			data.ImportStep(),
+			{
+				Config: testAccAzureRMStorageShare_NFSUpdate(data),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMStorageShareExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "deleted"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "remaining_retention_days"),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
+func TestAccAzureRMStorageShare_SMB(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_storage_share", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: testCheckAzureRMStorageShareDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAzureRMStorageShare_SMB(data),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMStorageShareExists(data.ResourceName),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "deleted"),
+					resource.TestCheckResourceAttrSet(data.ResourceName, "remaining_retention_days"),
+				),
+			},
+			data.ImportStep(),
+		},
+	})
+}
+
 func testCheckAzureRMStorageShareExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		storageClient := acceptance.AzureProvider.Meta().(*clients.Client).Storage
@@ -243,13 +320,13 @@ func testCheckAzureRMStorageShareExists(resourceName string) resource.TestCheckF
 			return fmt.Errorf("Unable to locate Storage Account %q!", accountName)
 		}
 
-		client, err := storageClient.FileSharesClient(ctx, *account)
-		if err != nil {
-			return fmt.Errorf("Error building FileShare Client: %s", err)
-		}
+		mgmtFileShareClient := storageClient.MgmtFileSharesClient
 
-		if _, err = client.GetProperties(ctx, accountName, shareName); err != nil {
-			return fmt.Errorf("Bad: Share %q (Storage Account: %q) does not exist", shareName, accountName)
+		if resp, err := mgmtFileShareClient.Get(ctx, account.ResourceGroup, accountName, shareName, ""); err != nil {
+			if utils.ResponseWasNotFound(resp.Response) {
+				return fmt.Errorf("bad: Storage File Share %q (Storage Account Name %q / Resource Group %q) does not exist", shareName, accountName, account.ResourceGroup)
+			}
+			return fmt.Errorf("bad: Get on Storage File Share Client: %+v", err)
 		}
 
 		return nil
@@ -484,9 +561,9 @@ resource "azurerm_storage_account" "test" {
   name                     = "acctestshare%s"
   resource_group_name      = azurerm_resource_group.test.name
   location                 = azurerm_resource_group.test.location
-  account_tier             = "Premium"
+  account_tier             = "Standard"
   account_replication_type = "LRS"
-  account_kind             = "FileStorage"
+  large_file_share_enabled = true
 
   tags = {
     environment = "staging"
@@ -516,9 +593,9 @@ resource "azurerm_storage_account" "test" {
   name                     = "acctestshare%s"
   resource_group_name      = azurerm_resource_group.test.name
   location                 = azurerm_resource_group.test.location
-  account_tier             = "Premium"
+  account_tier             = "Standard"
   account_replication_type = "LRS"
-  account_kind             = "FileStorage"
+  large_file_share_enabled = true
 
   tags = {
     environment = "staging"
@@ -556,4 +633,100 @@ resource "azurerm_storage_account" "test" {
   }
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomString)
+}
+
+func testAccAzureRMStorageShare_NFStemplate(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-storage-%[1]d"
+  location = "%[2]s"
+}
+
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvirtnet%[1]d"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+}
+
+resource "azurerm_subnet" "test" {
+  name                 = "acctestsubnet%[1]d"
+  resource_group_name  = azurerm_resource_group.test.name
+  virtual_network_name = azurerm_virtual_network.test.name
+  address_prefix       = "10.0.2.0/24"
+  service_endpoints    = ["Microsoft.Storage"]
+}
+
+resource "azurerm_storage_account" "test" {
+  name                      = "unlikely23exst2acct%[3]s"
+  resource_group_name       = azurerm_resource_group.test.name
+  location                  = azurerm_resource_group.test.location
+  account_kind              = "FileStorage"
+  account_tier              = "Premium"
+  account_replication_type  = "LRS"
+  access_tier               = "Hot"
+  enable_https_traffic_only = false
+
+  network_rules {
+    default_action             = "Deny"
+    ip_rules                   = ["127.0.0.1"]
+    virtual_network_subnet_ids = [azurerm_subnet.test.id]
+  }
+
+  tags = {
+    environment = "production"
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomString)
+}
+
+func testAccAzureRMStorageShare_NFS(data acceptance.TestData) string {
+	template := testAccAzureRMStorageShare_NFStemplate(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_storage_share" "test" {
+  name                 = "testshare%s"
+  storage_account_name = azurerm_storage_account.test.name
+  quota                = 4096
+  enabled_protocol     = "NFS"
+  root_squash          = "AllSquash"
+  access_tier          = "Premium"
+}
+`, template, data.RandomString)
+}
+
+func testAccAzureRMStorageShare_NFSUpdate(data acceptance.TestData) string {
+	template := testAccAzureRMStorageShare_NFStemplate(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_storage_share" "test" {
+  name                 = "testshare%s"
+  storage_account_name = azurerm_storage_account.test.name
+  quota                = 5120
+  enabled_protocol     = "NFS"
+  root_squash          = "NoRootSquash"
+  access_tier          = "Premium"
+}
+`, template, data.RandomString)
+}
+
+func testAccAzureRMStorageShare_SMB(data acceptance.TestData) string {
+	template := testAccAzureRMStorageShare_NFStemplate(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_storage_share" "test" {
+  name                 = "testshare%s"
+  storage_account_name = azurerm_storage_account.test.name
+  quota                = 1024
+  enabled_protocol     = "SMB"
+  access_tier          = "Premium"
+}
+`, template, data.RandomString)
 }

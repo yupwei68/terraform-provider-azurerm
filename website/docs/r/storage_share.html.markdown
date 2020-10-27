@@ -60,6 +60,14 @@ The following arguments are supported:
 
 * `metadata` - (Optional) A mapping of MetaData for this File Share.
 
+* `enabled_protocol` - (Optional) The authentication protocol that is used for the File Share. Possible values are `SMB` and `NFS`. Changing this forces a new resource to be created.
+
+~> **Note:** If you want to create a NFS File Share, please verify if the feature is registered in your subscription. More details could be found at [create an NFS share](https://docs.microsoft.com/en-us/azure/storage/files/storage-files-how-to-create-nfs-shares?tabs=azure-portal).
+
+* `root_squash` - (Optional) The root squash for the File Share. The property is settable only when `enabled_protocol` is `NFS`. Possible values are `NoRootSquash`, `RootSquash` and `AllSquash`.
+
+* `access_tier` - (Optional) The access tier for the File Share. GpV2 account can choose between `TransactionOptimized`, `Hot` and `Cool`. `FileStorage` account can choose `Premium`.  
+
 ---
 
 A `acl` block supports the following:
@@ -89,6 +97,10 @@ The following attributes are exported in addition to the arguments listed above:
 * `resource_manager_id` - The Resource Manager ID of this File Share.
 
 * `url` - The URL of the File Share
+
+* `deleted` - Was the File Share deleted?
+
+* `remaining_retention_days` - Remaining retention days for share that was soft deleted.
 
 ## Timeouts
 
