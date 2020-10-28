@@ -717,16 +717,33 @@ resource "azurerm_storage_share" "test" {
 }
 
 func testAccAzureRMStorageShare_SMB(data acceptance.TestData) string {
-	template := testAccAzureRMStorageShare_NFStemplate(data)
 	return fmt.Sprintf(`
-%s
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-storage-%[1]d"
+  location = "%[2]s"
+}
+
+resource "azurerm_storage_account" "test" {
+  name                      = "unlikely23exst2acct%[3]s"
+  resource_group_name       = azurerm_resource_group.test.name
+  location                  = azurerm_resource_group.test.location
+  account_kind              = "FileStorage"
+  account_tier              = "Premium"
+  account_replication_type  = "LRS"
+  access_tier               = "Hot"
+  enable_https_traffic_only = false
+}
 
 resource "azurerm_storage_share" "test" {
-  name                 = "testshare%s"
+  name                 = "testshare%[3]s"
   storage_account_name = azurerm_storage_account.test.name
   quota                = 1024
   enabled_protocol     = "SMB"
   access_tier          = "Premium"
 }
-`, template, data.RandomString)
+`, data.RandomInteger, data.Locations.Primary, data.RandomString)
 }
