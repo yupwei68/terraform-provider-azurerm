@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2019-08-01/web"
+	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
 	"github.com/hashicorp/go-azure-helpers/response"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
+	helpersValidate "github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	networkParse "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/network/parse"
 	networkValidate "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/network/validate"
@@ -21,6 +24,10 @@ import (
 	azSchema "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
+)
+
+const (
+	LoadBalancingModeWebPublishing web.LoadBalancingMode = "Web, Publishing"
 )
 
 func resourceArmAppServiceEnvironment() *schema.Resource {
@@ -36,10 +43,10 @@ func resourceArmAppServiceEnvironment() *schema.Resource {
 
 		// Need to find sane values for below, some operations on this resource can take an exceptionally long time
 		Timeouts: &schema.ResourceTimeout{
-			Create: schema.DefaultTimeout(4 * time.Hour),
+			Create: schema.DefaultTimeout(6 * time.Hour),
 			Read:   schema.DefaultTimeout(5 * time.Minute),
-			Update: schema.DefaultTimeout(4 * time.Hour),
-			Delete: schema.DefaultTimeout(4 * time.Hour),
+			Update: schema.DefaultTimeout(6 * time.Hour),
+			Delete: schema.DefaultTimeout(6 * time.Hour),
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -60,12 +67,17 @@ func resourceArmAppServiceEnvironment() *schema.Resource {
 			"internal_load_balancing_mode": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  string(web.InternalLoadBalancingModeNone),
+				ForceNew: true,
+				Default:  string(web.LoadBalancingModeNone),
 				ValidateFunc: validation.StringInSlice([]string{
-					string(web.InternalLoadBalancingModeNone),
-					string(web.InternalLoadBalancingModePublishing),
-					string(web.InternalLoadBalancingModeWeb),
+					string(web.LoadBalancingModeNone),
+					string(web.LoadBalancingModePublishing),
+					string(web.LoadBalancingModeWeb),
+					string(web.LoadBalancingModeWebPublishing),
+					// (@jackofallops) breaking change in SDK - Enum for internal_load_balancing_mode changed from Web, Publishing to Web,Publishing
+					string(LoadBalancingModeWebPublishing),
 				}, false),
+				DiffSuppressFunc: loadBalancingModeDiffSuppress,
 			},
 
 			"front_end_scale_factor": {
@@ -84,6 +96,29 @@ func resourceArmAppServiceEnvironment() *schema.Resource {
 					"I2",
 					"I3",
 				}, false),
+			},
+
+			"allowed_user_ip_cidrs": {
+				Type:          schema.TypeSet,
+				Optional:      true,
+				Computed:      true, // remove in 3.0
+				ConflictsWith: []string{"user_whitelisted_ip_ranges"},
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: helpersValidate.CIDR,
+				},
+			},
+
+			"user_whitelisted_ip_ranges": {
+				Type:          schema.TypeSet,
+				Optional:      true,
+				Computed:      true, // remove in 3.0
+				ConflictsWith: []string{"allowed_user_ip_cidrs"},
+				Deprecated:    "this property has been renamed to `allowed_user_ip_cidrs` better reflect the expected ip range format",
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: helpersValidate.CIDR,
+				},
 			},
 
 			// TODO in 3.0 Make it "Required"
@@ -108,7 +143,12 @@ func resourceArmAppServiceEnvironmentCreate(d *schema.ResourceData, meta interfa
 
 	name := d.Get("name").(string)
 	internalLoadBalancingMode := d.Get("internal_load_balancing_mode").(string)
+	internalLoadBalancingMode = strings.ReplaceAll(internalLoadBalancingMode, " ", "")
 	t := d.Get("tags").(map[string]interface{})
+	userWhitelistedIPRangesRaw := d.Get("user_whitelisted_ip_ranges").(*schema.Set).List()
+	if v, ok := d.GetOk("allowed_user_ip_cidrs"); ok {
+		userWhitelistedIPRangesRaw = v.(*schema.Set).List()
+	}
 
 	subnetId := d.Get("subnet_id").(string)
 	subnet, err := networkParse.SubnetID(subnetId)
@@ -116,7 +156,7 @@ func resourceArmAppServiceEnvironmentCreate(d *schema.ResourceData, meta interfa
 		return err
 	}
 
-	// TODO: Remove the implicit behavior in new major version.
+	// TODO: Remove the implicit behaviour in new major version.
 	// Discrepancy of resource group between ASE and Subnet is allowed. While for the sake of
 	// compatibility, we still allow user to use the resource group of Subnet to be the one for
 	// ASE implicitly. While allow user to explicitly specify the resource group, which takes higher
@@ -159,13 +199,14 @@ func resourceArmAppServiceEnvironmentCreate(d *schema.ResourceData, meta interfa
 		AppServiceEnvironment: &web.AppServiceEnvironment{
 			Name:                      utils.String(name),
 			Location:                  utils.String(location),
-			InternalLoadBalancingMode: web.InternalLoadBalancingMode(internalLoadBalancingMode),
+			InternalLoadBalancingMode: web.LoadBalancingMode(internalLoadBalancingMode),
 			FrontEndScaleFactor:       utils.Int32(int32(frontEndScaleFactor)),
 			MultiSize:                 utils.String(convertFromIsolatedSKU(pricingTier)),
 			VirtualNetwork: &web.VirtualNetworkProfile{
 				ID:     utils.String(subnetId),
 				Subnet: utils.String(subnet.Name),
 			},
+			UserWhitelistedIPRanges: utils.ExpandStringSlice(userWhitelistedIPRangesRaw),
 
 			// the SDK is coded primarily for v1, which needs a non-null entry for workerpool, so we construct an empty slice for it
 			// TODO: remove this hack once https://github.com/Azure/azure-rest-api-specs/pull/8433 has been merged
@@ -179,9 +220,21 @@ func resourceArmAppServiceEnvironmentCreate(d *schema.ResourceData, meta interfa
 		return fmt.Errorf("Error creating App Service Environment %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
+	createWait := resource.StateChangeConf{
+		Pending: []string{
+			string(web.ProvisioningStateInProgress),
+		},
+		Target: []string{
+			string(web.ProvisioningStateSucceeded),
+		},
+		MinTimeout: 1 * time.Minute,
+		Timeout:    d.Timeout(schema.TimeoutCreate),
+		Refresh:    appServiceEnvironmentRefresh(ctx, client, resourceGroup, name),
+	}
+
 	// as such we'll ignore it and use a custom poller instead
-	if err := waitForAppServiceEnvironmentToStabilize(ctx, client, resourceGroup, name); err != nil {
-		return fmt.Errorf("Error waiting for the creation of App Service Environment %q (Resource Group %q): %+v", name, resourceGroup, err)
+	if _, err := createWait.WaitForState(); err != nil {
+		return fmt.Errorf("waiting for the creation of App Service Environment %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	read, err := client.Get(ctx, resourceGroup, name)
@@ -204,31 +257,51 @@ func resourceArmAppServiceEnvironmentUpdate(d *schema.ResourceData, meta interfa
 		return err
 	}
 
-	environment := web.AppServiceEnvironmentPatchResource{
+	e := web.AppServiceEnvironmentPatchResource{
 		AppServiceEnvironment: &web.AppServiceEnvironment{},
 	}
 
 	if d.HasChange("internal_load_balancing_mode") {
 		v := d.Get("internal_load_balancing_mode").(string)
-		environment.AppServiceEnvironment.InternalLoadBalancingMode = web.InternalLoadBalancingMode(v)
+		v = strings.ReplaceAll(v, " ", "")
+		e.AppServiceEnvironment.InternalLoadBalancingMode = web.LoadBalancingMode(v)
 	}
 
 	if d.HasChange("front_end_scale_factor") {
 		v := d.Get("front_end_scale_factor").(int)
-		environment.AppServiceEnvironment.FrontEndScaleFactor = utils.Int32(int32(v))
+		e.AppServiceEnvironment.FrontEndScaleFactor = utils.Int32(int32(v))
 	}
 
 	if d.HasChange("pricing_tier") {
 		v := d.Get("pricing_tier").(string)
 		v = convertFromIsolatedSKU(v)
-		environment.AppServiceEnvironment.MultiSize = utils.String(v)
+		e.AppServiceEnvironment.MultiSize = utils.String(v)
 	}
 
-	if _, err := client.Update(ctx, id.ResourceGroup, id.Name, environment); err != nil {
+	if d.HasChanges("user_whitelisted_ip_ranges", "allowed_user_ip_cidrs") {
+		e.UserWhitelistedIPRanges = utils.ExpandStringSlice(d.Get("user_whitelisted_ip_ranges").(*schema.Set).List())
+		if v, ok := d.GetOk("user_whitelisted_ip_ranges"); ok {
+			e.UserWhitelistedIPRanges = utils.ExpandStringSlice(v.(*schema.Set).List())
+		}
+	}
+
+	if _, err := client.Update(ctx, id.ResourceGroup, id.Name, e); err != nil {
 		return fmt.Errorf("Error updating App Service Environment %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	if err := waitForAppServiceEnvironmentToStabilize(ctx, client, id.ResourceGroup, id.Name); err != nil {
+	updateWait := resource.StateChangeConf{
+		Pending: []string{
+			string(web.ProvisioningStateInProgress),
+		},
+		Target: []string{
+			string(web.ProvisioningStateSucceeded),
+		},
+		MinTimeout: 1 * time.Minute,
+		Timeout:    d.Timeout(schema.TimeoutUpdate),
+		Refresh:    appServiceEnvironmentRefresh(ctx, client, id.ResourceGroup, id.Name),
+	}
+
+	if _, err := updateWait.WaitForState(); err != nil {
 		return fmt.Errorf("Error waiting for Update of App Service Environment %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
@@ -282,6 +355,8 @@ func resourceArmAppServiceEnvironmentRead(d *schema.ResourceData, meta interface
 			pricingTier = convertToIsolatedSKU(*props.MultiSize)
 		}
 		d.Set("pricing_tier", pricingTier)
+		d.Set("user_whitelisted_ip_ranges", props.UserWhitelistedIPRanges)
+		d.Set("allowed_user_ip_cidrs", props.UserWhitelistedIPRanges)
 	}
 
 	return tags.FlattenAndSet(d, existing.Tags)
@@ -322,29 +397,20 @@ func resourceArmAppServiceEnvironmentDelete(d *schema.ResourceData, meta interfa
 	return nil
 }
 
-func waitForAppServiceEnvironmentToStabilize(ctx context.Context, client *web.AppServiceEnvironmentsClient, resourceGroup string, name string) error {
-	for {
-		time.Sleep(1 * time.Minute)
-
+func appServiceEnvironmentRefresh(ctx context.Context, client *web.AppServiceEnvironmentsClient, resourceGroup string, name string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
 		read, err := client.Get(ctx, resourceGroup, name)
+
 		if err != nil {
-			return err
+			return "", "", err
 		}
 
 		if read.AppServiceEnvironment == nil {
-			return fmt.Errorf("`properties` was nil")
+			return "", "", fmt.Errorf("`properties` was nil")
 		}
 
 		state := read.AppServiceEnvironment.ProvisioningState
-		if state == web.ProvisioningStateSucceeded {
-			return nil
-		}
-
-		if state == web.ProvisioningStateInProgress {
-			continue
-		}
-
-		return fmt.Errorf("Unexpected ProvisioningState: %q", state)
+		return state, string(state), nil
 	}
 }
 
@@ -371,4 +437,8 @@ func convertToIsolatedSKU(vmSKU string) (isolated string) {
 		isolated = "I3"
 	}
 	return isolated
+}
+
+func loadBalancingModeDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
+	return strings.ReplaceAll(old, " ", "") == strings.ReplaceAll(new, " ", "")
 }

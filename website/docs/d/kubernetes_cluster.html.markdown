@@ -36,7 +36,7 @@ The following attributes are exported:
 
 * `id` - The ID of the Kubernetes Managed Cluster.
 
-* `api_server_authorized_ip_ranges` - The IP ranges to whitelist for incoming traffic to the masters.
+* `api_server_authorized_ip_ranges` - The IP ranges to whitelist for incoming traffic to the primaries.
 
 -> **NOTE:** `api_server_authorized_ip_ranges` Is currently in Preview on an opt-in basis. To use it, enable feature `APIServerSecurityPreview` for `namespace Microsoft.ContainerService`. For an example of how to enable a Preview feature, please visit [How to enable the Azure Firewall Public Preview](https://docs.microsoft.com/en-us/azure/firewall/public-preview)
 
@@ -66,6 +66,8 @@ The following attributes are exported:
 
 * `location` - The Azure Region in which the managed Kubernetes Cluster exists.
 
+* `disk_encryption_set_id` - The ID of the Disk Encryption Set used for the Nodes and Volumes.
+
 * `linux_profile` - A `linux_profile` block as documented below.
 
 * `windows_profile` - A `windows_profile` block as documented below.
@@ -80,7 +82,7 @@ The following attributes are exported:
 
 * `identity` - A `identity` block as documented below.
 
-* `kubelet_identity` - A `kubelet_identity` block as documented below.  
+* `kubelet_identity` - A `kubelet_identity` block as documented below.
 
 * `tags` - A mapping of tags assigned to this resource.
 
@@ -116,24 +118,27 @@ A `agent_pool_profile` block exports the following:
 
 * `name` - The name assigned to this pool of agents.
 
-* `node_taints` - The list of Kubernetes taints which are applied to nodes in the agent pool
-
 * `os_disk_size_gb` - The size of the Agent VM's Operating System Disk in GB.
 
 * `os_type` - The Operating System used for the Agents.
 
 * `tags` - A mapping of tags to assign to the resource.
 
+* `orchestrator_version` - Kubernetes version used for the Agents.
+
 * `vm_size` - The size of each VM in the Agent Pool (e.g. `Standard_F1`).
 
 * `vnet_subnet_id` - The ID of the Subnet where the Agents in the Pool are provisioned.
-
 
 ---
 
 A `azure_active_directory` block exports the following:
 
+* `admin_group_object_ids` - The list of Object IDs of Azure Active Directory Groups which have Admin Role on the Cluster (when using a Managed integration).
+
 * `client_app_id` - The Client ID of an Azure Active Directory Application.
+
+* `managed` - Is the Azure Active Directory Integration managed (also known as AAD Integration V2)?
 
 * `server_app_id` - The Server ID of an Azure Active Directory Application.
 
@@ -165,7 +170,7 @@ The `kube_admin_config` and `kube_config` blocks exports the following:
 
 -> **NOTE:** It's possible to use these credentials with [the Kubernetes Provider](/docs/providers/kubernetes/index.html) like so:
 
-```
+```hcl
 provider "kubernetes" {
   load_config_file       = "false"
   host                   = "${data.azurerm_kubernetes_cluster.main.kube_config.0.host}"
@@ -259,9 +264,9 @@ The `identity` block exports the following:
 
 * `type` - The type of identity used for the managed cluster.
 
-* `principal_id` - The principal id of the system assigned identity which is used by master components.
+* `principal_id` - The principal id of the system assigned identity which is used by primary components.
 
-* `tenant_id` - The tenant id of the system assigned identity which is used by master components.
+* `tenant_id` - The tenant id of the system assigned identity which is used by primary components.
 
 ---
 

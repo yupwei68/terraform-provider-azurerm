@@ -35,6 +35,19 @@ func AdvisorRecommendationID(input string) (*AdvisorRecommendationId, error) {
 	}, nil
 }
 
+func NewAdvisorSuppressionID(resourceUri, recommendationName, name string) AdvisorSuppressionId {
+	return AdvisorSuppressionId{
+		ResourceUri:        resourceUri,
+		RecommendationName: recommendationName,
+		Name:               name,
+	}
+}
+
+func (id AdvisorSuppressionId) ID(_ string) string {
+	fmtString := "%s/providers/Microsoft.Advisor/recommendations/%s/suppressions/%s"
+	return fmt.Sprintf(fmtString, id.ResourceUri, id.RecommendationName, id.Name)
+}
+
 func AdvisorSuppressionID(input string) (*AdvisorSuppressionId, error) {
 	//suppression ID is /resourceUri/providers/Microsoft.Advisor/recommendations/recommendationId/suppressions/suppressionName1
 	inputSplit := strings.Split(input, "/providers/Microsoft.Advisor/recommendations/")

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-02-01/containerservice"
+	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-09-01/containerservice"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/kubernetes"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/containers/kubernetes"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
@@ -186,6 +186,11 @@ func dataSourceArmKubernetesCluster() *schema.Resource {
 							Computed: true,
 						},
 
+						"orchestrator_version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+
 						"max_pods": {
 							Type:     schema.TypeInt,
 							Computed: true,
@@ -201,13 +206,13 @@ func dataSourceArmKubernetesCluster() *schema.Resource {
 
 						"node_taints": {
 							Type:     schema.TypeList,
-							Optional: true,
+							Computed: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 
 						"enable_node_public_ip": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -231,19 +236,19 @@ func dataSourceArmKubernetesCluster() *schema.Resource {
 				},
 			},
 
+			"disk_encryption_set_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
 			"private_link_enabled": {
-				Type:          schema.TypeBool,
-				Computed:      true,
-				Optional:      true,
-				ConflictsWith: []string{"private_cluster_enabled"},
-				Deprecated:    "Deprecated in favor of `private_cluster_enabled`", // TODO -- remove this in next major version
+				Type:     schema.TypeBool,
+				Computed: true,
 			},
 
 			"private_cluster_enabled": {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Computed:      true, // TODO -- remove this when deprecation resolves
-				ConflictsWith: []string{"private_link_enabled"},
+				Type:     schema.TypeBool,
+				Computed: true, // TODO -- remove this when deprecation resolves
 			},
 
 			"private_fqdn": {
@@ -481,8 +486,21 @@ func dataSourceArmKubernetesCluster() *schema.Resource {
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
+									"admin_group_object_ids": {
+										Type:     schema.TypeList,
+										Computed: true,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+									},
+
 									"client_app_id": {
 										Type:     schema.TypeString,
+										Computed: true,
+									},
+
+									"managed": {
+										Type:     schema.TypeBool,
 										Computed: true,
 									},
 
@@ -553,6 +571,7 @@ func dataSourceArmKubernetesClusterRead(d *schema.ResourceData, meta interface{}
 	if props := resp.ManagedClusterProperties; props != nil {
 		d.Set("dns_prefix", props.DNSPrefix)
 		d.Set("fqdn", props.Fqdn)
+		d.Set("disk_encryption_set_id", props.DiskEncryptionSetID)
 		d.Set("private_fqdn", props.PrivateFQDN)
 		d.Set("kubernetes_version", props.KubernetesVersion)
 		d.Set("node_resource_group", props.NodeResourceGroup)
@@ -647,21 +666,35 @@ func flattenKubernetesClusterDataSourceRoleBasedAccessControl(input *containerse
 
 	results := make([]interface{}, 0)
 	if profile := input.AadProfile; profile != nil {
-		output := make(map[string]interface{})
+		adminGroupObjectIds := utils.FlattenStringSlice(profile.AdminGroupObjectIDs)
 
+		clientAppId := ""
 		if profile.ClientAppID != nil {
-			output["client_app_id"] = *profile.ClientAppID
+			clientAppId = *profile.ClientAppID
 		}
 
+		managed := false
+		if profile.Managed != nil {
+			managed = *profile.Managed
+		}
+
+		serverAppId := ""
 		if profile.ServerAppID != nil {
-			output["server_app_id"] = *profile.ServerAppID
+			serverAppId = *profile.ServerAppID
 		}
 
+		tenantId := ""
 		if profile.TenantID != nil {
-			output["tenant_id"] = *profile.TenantID
+			tenantId = *profile.TenantID
 		}
 
-		results = append(results, output)
+		results = append(results, map[string]interface{}{
+			"admin_group_object_ids": adminGroupObjectIds,
+			"client_app_id":          clientAppId,
+			"managed":                managed,
+			"server_app_id":          serverAppId,
+			"tenant_id":              tenantId,
+		})
 	}
 
 	return []interface{}{
@@ -683,7 +716,6 @@ func flattenKubernetesClusterDataSourceAccessProfile(profile containerservice.Ma
 
 		if strings.Contains(rawConfig, "apiserver-id:") {
 			kubeConfigAAD, err := kubernetes.ParseKubeConfigAAD(rawConfig)
-
 			if err != nil {
 				return utils.String(rawConfig), []interface{}{}
 			}
@@ -691,7 +723,6 @@ func flattenKubernetesClusterDataSourceAccessProfile(profile containerservice.Ma
 			flattenedKubeConfig = flattenKubernetesClusterDataSourceKubeConfigAAD(*kubeConfigAAD)
 		} else {
 			kubeConfig, err := kubernetes.ParseKubeConfig(rawConfig)
-
 			if err != nil {
 				return utils.String(rawConfig), []interface{}{}
 			}
@@ -709,14 +740,14 @@ func flattenKubernetesClusterDataSourceAddonProfiles(profile map[string]*contain
 	values := make(map[string]interface{})
 
 	routes := make([]interface{}, 0)
-	if httpApplicationRouting := profile["httpApplicationRouting"]; httpApplicationRouting != nil {
+	if httpApplicationRouting := kubernetesAddonProfileLocate(profile, httpApplicationRoutingKey); httpApplicationRouting != nil {
 		enabled := false
 		if enabledVal := httpApplicationRouting.Enabled; enabledVal != nil {
 			enabled = *enabledVal
 		}
 
 		zoneName := ""
-		if v := httpApplicationRouting.Config["HTTPApplicationRoutingZoneName"]; v != nil {
+		if v := kubernetesAddonProfilelocateInConfig(httpApplicationRouting.Config, "HTTPApplicationRoutingZoneName"); v != nil {
 			zoneName = *v
 		}
 
@@ -729,15 +760,15 @@ func flattenKubernetesClusterDataSourceAddonProfiles(profile map[string]*contain
 	values["http_application_routing"] = routes
 
 	agents := make([]interface{}, 0)
-	if omsAgent := profile["omsagent"]; omsAgent != nil {
+	if omsAgent := kubernetesAddonProfileLocate(profile, omsAgentKey); omsAgent != nil {
 		enabled := false
 		if enabledVal := omsAgent.Enabled; enabledVal != nil {
 			enabled = *enabledVal
 		}
 
 		workspaceID := ""
-		if workspaceResourceID := omsAgent.Config["logAnalyticsWorkspaceResourceID"]; workspaceResourceID != nil {
-			workspaceID = *workspaceResourceID
+		if v := kubernetesAddonProfilelocateInConfig(omsAgent.Config, "logAnalyticsWorkspaceResourceID"); v != nil {
+			workspaceID = *v
 		}
 
 		omsagentIdentity := flattenKubernetesClusterDataSourceOmsAgentIdentityProfile(omsAgent.Identity)
@@ -752,7 +783,7 @@ func flattenKubernetesClusterDataSourceAddonProfiles(profile map[string]*contain
 	values["oms_agent"] = agents
 
 	kubeDashboards := make([]interface{}, 0)
-	if kubeDashboard := profile["kubeDashboard"]; kubeDashboard != nil {
+	if kubeDashboard := kubernetesAddonProfileLocate(profile, kubernetesDashboardKey); kubeDashboard != nil {
 		enabled := false
 		if enabledVal := kubeDashboard.Enabled; enabledVal != nil {
 			enabled = *enabledVal
@@ -766,7 +797,7 @@ func flattenKubernetesClusterDataSourceAddonProfiles(profile map[string]*contain
 	values["kube_dashboard"] = kubeDashboards
 
 	azurePolicies := make([]interface{}, 0)
-	if azurePolicy := profile["azurepolicy"]; azurePolicy != nil {
+	if azurePolicy := kubernetesAddonProfileLocate(profile, azurePolicyKey); azurePolicy != nil {
 		enabled := false
 		if enabledVal := azurePolicy.Enabled; enabledVal != nil {
 			enabled = *enabledVal
@@ -862,6 +893,10 @@ func flattenKubernetesClusterDataSourceAgentPoolProfiles(input *[]containerservi
 
 		if profile.OsType != "" {
 			agentPoolProfile["os_type"] = string(profile.OsType)
+		}
+
+		if profile.OrchestratorVersion != nil && *profile.OrchestratorVersion != "" {
+			agentPoolProfile["orchestrator_version"] = *profile.OrchestratorVersion
 		}
 
 		if profile.MaxPods != nil {
@@ -1045,7 +1080,7 @@ func flattenKubernetesClusterDataSourceKubeConfigAAD(config kubernetes.KubeConfi
 
 func flattenKubernetesClusterDataSourceManagedClusterIdentity(input *containerservice.ManagedClusterIdentity) []interface{} {
 	// if it's none, omit the block
-	if input == nil || input.Type == containerservice.None {
+	if input == nil || input.Type == containerservice.ResourceIdentityTypeNone {
 		return []interface{}{}
 	}
 
