@@ -31,6 +31,7 @@ func (r Registration) SupportedResources() map[string]*schema.Resource {
 		"azurerm_mysql_configuration":                  resourceArmMySQLConfiguration(),
 		"azurerm_mysql_database":                       resourceArmMySqlDatabase(),
 		"azurerm_mysql_firewall_rule":                  resourceArmMySqlFirewallRule(),
+		"azurerm_mysql_flexible_server":                resourceMysqlFlexibleServer(),
 		"azurerm_mysql_server":                         resourceArmMySqlServer(),
 		"azurerm_mysql_server_key":                     resourceArmMySQLServerKey(),
 		"azurerm_mysql_virtual_network_rule":           resourceArmMySQLVirtualNetworkRule(),
