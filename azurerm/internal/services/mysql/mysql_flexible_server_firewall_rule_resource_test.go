@@ -44,20 +44,6 @@ func TestAccMysqlFlexibleServerFirewallRule_requiresImport(t *testing.T) {
 	})
 }
 
-func (MysqlFlexibleServerFirewallRuleResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
-	id, err := parse.FlexibleServerFirewallRuleID(state.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := clients.MySQL.FlexibleServerFirewallRulesClient.Get(ctx, id.ResourceGroup, id.FlexibleServerName, id.FirewallRuleName)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving Mysql Flexible Server Firewall Rule %q (server name: %q / resource group: %q): %+v", id.FirewallRuleName, id.FlexibleServerName, id.ResourceGroup, err)
-	}
-
-	return utils.Bool(resp.FirewallRuleProperties != nil), nil
-}
-
 func TestAccMysqlFlexibleServerFirewallRule_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_mysql_flexible_server_firewall_rule", "test")
 	r := MysqlFlexibleServerFirewallRuleResource{}
@@ -76,7 +62,28 @@ func TestAccMysqlFlexibleServerFirewallRule_update(t *testing.T) {
 			),
 		},
 		data.ImportStep(),
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
 	})
+}
+
+func (MysqlFlexibleServerFirewallRuleResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
+	id, err := parse.FlexibleServerFirewallRuleID(state.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := clients.MySQL.FlexibleServerFirewallRulesClient.Get(ctx, id.ResourceGroup, id.FlexibleServerName, id.FirewallRuleName)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving Mysql Flexible Server Firewall Rule %q (server name: %q / resource group: %q): %+v", id.FirewallRuleName, id.FlexibleServerName, id.ResourceGroup, err)
+	}
+
+	return utils.Bool(resp.FirewallRuleProperties != nil), nil
 }
 
 func (r MysqlFlexibleServerFirewallRuleResource) basic(data acceptance.TestData) string {
