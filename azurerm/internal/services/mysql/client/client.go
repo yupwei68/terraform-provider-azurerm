@@ -12,6 +12,7 @@ type Client struct {
 	FirewallRulesClient               *mysql.FirewallRulesClient
 	FlexibleServersClient             *mysqlflexibleservers.ServersClient
 	FlexibleServerKeysClient          *mysqlflexibleservers.ServerKeysClient
+	FlexibleServerFirewallRulesClient *mysqlflexibleservers.FirewallRulesClient
 	ServersClient                     *mysql.ServersClient
 	ServerKeysClient                  *mysql.ServerKeysClient
 	ServerSecurityAlertPoliciesClient *mysql.ServerSecurityAlertPoliciesClient
@@ -35,6 +36,9 @@ func NewClient(o *common.ClientOptions) *Client {
 	flexibleServerKeysClient := mysqlflexibleservers.NewServerKeysClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&flexibleServerKeysClient.Client, o.ResourceManagerAuthorizer)
 
+	flexibleServerFirewallRulesClient := mysqlflexibleservers.NewFirewallRulesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&flexibleServerFirewallRulesClient.Client, o.ResourceManagerAuthorizer)
+
 	ServersClient := mysql.NewServersClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&ServersClient.Client, o.ResourceManagerAuthorizer)
 
@@ -56,6 +60,7 @@ func NewClient(o *common.ClientOptions) *Client {
 		FirewallRulesClient:               &FirewallRulesClient,
 		FlexibleServersClient:             &flexibleServersClient,
 		FlexibleServerKeysClient:          &flexibleServerKeysClient,
+		FlexibleServerFirewallRulesClient: &flexibleServerFirewallRulesClient,
 		ServersClient:                     &ServersClient,
 		ServerKeysClient:                  &ServerKeysClient,
 		ServerSecurityAlertPoliciesClient: &serverSecurityAlertPoliciesClient,
