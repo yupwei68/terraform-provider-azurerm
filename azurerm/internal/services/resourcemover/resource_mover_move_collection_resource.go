@@ -214,11 +214,20 @@ func expandArmMoveCollectionIdentity(input []interface{}) *resourcemover.Identit
 		}
 	}
 	v := input[0].(map[string]interface{})
-	return &resourcemover.Identity{
-		Type:        resourcemover.ResourceIdentityType(v["type"].(string)),
-		PrincipalID: utils.String(v["principal_id"].(string)),
-		TenantID:    utils.String(v["tenant_id"].(string)),
+
+	identity := resourcemover.Identity{
+		Type: resourcemover.ResourceIdentityType(v["type"].(string)),
 	}
+
+	if p, ok := v["principal_id"]; ok {
+		identity.PrincipalID = utils.String(p.(string))
+	}
+
+	if t, ok := v["tenant_id"]; ok {
+		identity.TenantID = utils.String(t.(string))
+	}
+
+	return &identity
 }
 
 func flattenArmMoveCollectionIdentity(input *resourcemover.Identity) []interface{} {
