@@ -72,6 +72,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/redis"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/relay"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/resource"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/resourcemover"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/search"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/securitycenter"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/sentinel"
@@ -170,6 +171,7 @@ func SupportedUntypedServices() []sdk.UntypedServiceRegistration {
 		redis.Registration{},
 		relay.Registration{},
 		resource.Registration{},
+		resourcemover.Registration{},
 		search.Registration{},
 		securitycenter.Registration{},
 		sentinel.Registration{},

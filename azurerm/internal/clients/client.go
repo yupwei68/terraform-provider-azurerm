@@ -77,6 +77,7 @@ import (
 	redis "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/redis/client"
 	relay "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/relay/client"
 	resource "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/resource/client"
+	resourcemover "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/resourcemover/client"
 	search "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/search/client"
 	securityCenter "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/securitycenter/client"
 	sentinel "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/sentinel/client"
@@ -172,6 +173,7 @@ type Client struct {
 	Redis                 *redis.Client
 	Relay                 *relay.Client
 	Resource              *resource.Client
+	ResourceMover         *resourcemover.Client
 	Search                *search.Client
 	SecurityCenter        *securityCenter.Client
 	Sentinel              *sentinel.Client
@@ -269,6 +271,7 @@ func (client *Client) Build(ctx context.Context, o *common.ClientOptions) error 
 	client.Redis = redis.NewClient(o)
 	client.Relay = relay.NewClient(o)
 	client.Resource = resource.NewClient(o)
+	client.ResourceMover = resourcemover.NewClient(o)
 	client.Search = search.NewClient(o)
 	client.SecurityCenter = securityCenter.NewClient(o)
 	client.Sentinel = sentinel.NewClient(o)
