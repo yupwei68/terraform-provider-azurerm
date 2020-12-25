@@ -61,13 +61,17 @@ func resourceResourceMoverMoveCollection() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"principal_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IsUUID,
 						},
 
 						"tenant_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IsUUID,
 						},
 
 						"type": {
@@ -219,11 +223,11 @@ func expandArmMoveCollectionIdentity(input []interface{}) *resourcemover.Identit
 		Type: resourcemover.ResourceIdentityType(v["type"].(string)),
 	}
 
-	if p, ok := v["principal_id"]; ok {
+	if p, ok := v["principal_id"]; ok && p.(string) != "" {
 		identity.PrincipalID = utils.String(p.(string))
 	}
 
-	if t, ok := v["tenant_id"]; ok {
+	if t, ok := v["tenant_id"]; ok && t.(string) != "" {
 		identity.TenantID = utils.String(t.(string))
 	}
 
