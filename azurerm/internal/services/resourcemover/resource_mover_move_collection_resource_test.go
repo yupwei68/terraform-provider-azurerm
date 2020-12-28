@@ -3,7 +3,6 @@ package resourcemover_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -77,20 +76,11 @@ func TestAccResourceMoverMoveCollection_update(t *testing.T) {
 			Config: r.complete(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("identity.0.principal_id").Exists(),
-				check.That(data.ResourceName).Key("identity.0.tenant_id").Exists(),
 			),
 		},
 		data.ImportStep(),
 		{
-			Config: r.update(data),
-			Check: resource.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		data.ImportStep(),
-		{
-			Config: r.updateRestore(data),
+			Config: r.basic(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -174,69 +164,4 @@ resource "azurerm_resource_mover_move_collection" "test" {
   }
 }
 `, data.RandomInteger, data.Locations.Primary, data.Locations.Secondary, data.Locations.Ternary)
-}
-
-func (r ResourceMoverMoveCollectionResource) update(data acceptance.TestData) string {
-	return fmt.Sprintf(`
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "test" {
-  name     = "acctestRG-resource-mover-%[1]d"
-  location = "%[2]s"
-}
-
-resource "azurerm_user_assigned_identity" "test" {
-  name                = "acctestusi%[1]d"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-
-}
-
-resource "azurerm_resource_mover_move_collection" "test" {
-  name                = "acctest-MC-%[1]d"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  source_region       = "%[3]s"
-  target_region       = "%[4]s"
-  identity {
-    type         = "UserAssigned"
-    principal_id = azurerm_user_assigned_identity.test.principal_id
-    tenant_id    = "%[5]s"
-  }
-
-  tags = {
-    Env = "Stage"
-  }
-}
-`, data.RandomInteger, data.Locations.Primary, data.Locations.Secondary, data.Locations.Ternary, os.Getenv("ARM_TENANT_ID"))
-}
-
-func (r ResourceMoverMoveCollectionResource) updateRestore(data acceptance.TestData) string {
-	return fmt.Sprintf(`
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "test" {
-  name     = "acctestRG-resource-mover-%[1]d"
-  location = "%[2]s"
-}
-
-resource "azurerm_user_assigned_identity" "test" {
-  name                = "acctestusi%[1]d"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-
-}
-
-resource "azurerm_resource_mover_move_collection" "test" {
-  name                = "acctest-MC-%[1]d"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  source_region       = "%[3]s"
-  target_region       = "%[4]s"
-}
-`, data.RandomInteger, data.Locations.Primary, data.Locations.Secondary, data.Locations.Ternary, os.Getenv("ARM_TENANT_ID"))
 }

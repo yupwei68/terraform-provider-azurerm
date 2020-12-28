@@ -79,7 +79,6 @@ func resourceResourceMoverMoveCollection() *schema.Resource {
 							Optional: true,
 							ValidateFunc: validation.StringInSlice([]string{
 								string(resourcemover.SystemAssigned),
-								string(resourcemover.UserAssigned),
 							}, false),
 						},
 					},
