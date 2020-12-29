@@ -26,7 +26,8 @@ func TestAccResourceMoverMoveResourcePublicIP_basic(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("PreparePending"),
+				check.That(data.ResourceName).Key("dependency.0.resolution_status").HasValue("Resolved"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -57,7 +58,8 @@ func TestAccResourceMoverMoveResourcePublicIP_complete(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("PreparePending"),
+				check.That(data.ResourceName).Key("dependency.0.resolution_status").HasValue("Resolved"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -74,7 +76,8 @@ func TestAccResourceMoverMoveResourcePublicIP_update(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("PreparePending"),
+				check.That(data.ResourceName).Key("dependency.0.resolution_status").HasValue("Resolved"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -84,7 +87,8 @@ func TestAccResourceMoverMoveResourcePublicIP_update(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("PreparePending"),
+				check.That(data.ResourceName).Key("dependency.0.resolution_status").HasValue("Resolved"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -94,7 +98,8 @@ func TestAccResourceMoverMoveResourcePublicIP_update(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("PreparePending"),
+				check.That(data.ResourceName).Key("dependency.0.resolution_status").HasValue("Resolved"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -107,31 +112,11 @@ func TestAccResourceMoverMoveResourcePublicIP_existing(t *testing.T) {
 	r := ResourceMoverMoveResourcePublicIPResource{}
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
-			Config: r.basic(data),
-			Check: resource.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
-				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
-			),
-		},
-		data.ImportStep(),
-		{
 			Config: r.existing(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
-				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
-			),
-		},
-		data.ImportStep(),
-		{
-			Config: r.existingRestore(data),
-			Check: resource.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("error").DoesNotExist(),
-				check.That(data.ResourceName).Key("move_status.0.move_state").Exists(),
+				check.That(data.ResourceName).Key("move_status.0.move_state").HasValue("CommitPending"),
 				//check.That(data.ResourceName).Key("target_id").HasValue(fmt.Sprintf("/subscriptions/%s/resourceGroups/acctestRG-target-resgp",os.Getenv("ARM_SUBSCRIPTION_ID"))),
 			),
 		},
@@ -229,13 +214,13 @@ func (r ResourceMoverMoveResourcePublicIPResource) existing(data acceptance.Test
 
 resource "azurerm_resource_group" "target" {
   name     = "acctestRG-target-%[2]d"
-  location = "%[3]s"
+  location = azurerm_resource_mover_move_collection.test.target_region
 }
 
 resource "azurerm_public_ip" "target" {
   name                = "acctestpublicip-tar-%[2]d"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.target.location
+  resource_group_name = azurerm_resource_group.target.name
   allocation_method   = "Dynamic"
   domain_name_label   = "acctestdnltar%[2]d"
   sku                 = "Basic"
@@ -256,37 +241,5 @@ resource "azurerm_resource_mover_move_resource_public_ip" "test" {
 
   depends_on = [azurerm_resource_mover_move_resource_resource_group.test]
 }
-`, r.template(data), data.RandomInteger, data.Locations.Ternary)
-}
-
-func (r ResourceMoverMoveResourcePublicIPResource) existingRestore(data acceptance.TestData) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "azurerm_resource_group" "target" {
-  name     = "acctestRG-target-%[2]d"
-  location = "%[3]s"
-}
-
-resource "azurerm_public_ip" "target" {
-  name                = "acctestpublicip-tar-%[2]d"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  allocation_method   = "Dynamic"
-  domain_name_label   = "acctestdnltar%[2]d"
-  sku                 = "Basic"
-  zones               = ["2"]
-}
-
-resource "azurerm_resource_mover_move_resource_public_ip" "test" {
-  name               = "acctest-MR-PIP-%[2]d"
-  move_collection_id = azurerm_resource_mover_move_collection.test.id
-  source_id          = azurerm_public_ip.test.id
-  resource_setting {
-    target_resource_name = "acctestRG-target-%[2]d"
-  }
-
-  depends_on = [azurerm_resource_mover_move_resource_resource_group.test]
-}
-`, r.template(data), data.RandomInteger, data.Locations.Ternary)
+`, r.template(data), data.RandomInteger)
 }

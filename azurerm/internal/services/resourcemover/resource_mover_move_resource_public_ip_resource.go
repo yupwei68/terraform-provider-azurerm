@@ -93,6 +93,7 @@ func resourceResourceMoverMoveResourcePublicIP() *schema.Resource {
 			"depends_on_override": {
 				Type:     schema.TypeSet,
 				Optional: true,
+				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"id": {
@@ -259,6 +260,7 @@ func resourceResourceMoverMoveResourcePublicIP() *schema.Resource {
 func resourceResourceMoverMoveResourcePublicIPCreateUpdate(d *schema.ResourceData, meta interface{}) error {
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	client := meta.(*clients.Client).ResourceMover.MoveResourceClient
+	collectionClient := meta.(*clients.Client).ResourceMover.MoveCollectionClient
 	ctx, cancel := timeouts.ForCreateUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -308,6 +310,15 @@ func resourceResourceMoverMoveResourcePublicIPCreateUpdate(d *schema.ResourceDat
 	}
 
 	d.SetId(id)
+
+	dependencyFuture, err := collectionClient.ResolveDependencies(ctx, moveCollectionId.ResourceGroup, moveCollectionId.MoveCollectionName)
+	if err != nil {
+		return fmt.Errorf("generating Resource Mover Move Collection %q Resolve Dependency (Resource Group %q ): %+v", moveCollectionId.MoveCollectionName, moveCollectionId.ResourceGroup, err)
+	}
+
+	if err := dependencyFuture.WaitForCompletionRef(ctx, client.Client); err != nil {
+		return fmt.Errorf("waiting for the generation of the Resource Mover Move Collection %q Resolve Dependency (Resource Group %q ): %+v", moveCollectionId.MoveCollectionName, moveCollectionId.ResourceGroup, err)
+	}
 
 	return resourceResourceMoverMoveResourcePublicIPRead(d, meta)
 }
