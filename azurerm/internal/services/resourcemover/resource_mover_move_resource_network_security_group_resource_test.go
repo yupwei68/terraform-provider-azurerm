@@ -253,8 +253,8 @@ resource "azurerm_network_security_rule" "target" {
 resource "azurerm_resource_mover_move_resource_network_security_group" "test" {
   name               = "acctest-MR-NSG-%[2]d"
   move_collection_id = azurerm_resource_mover_move_collection.test.id
-  source_id          = azurerm_network_security_rule.test.id
-  existing_target_id = azurerm_network_security_rule.target.id
+  source_id          = azurerm_network_security_group.test.id
+  existing_target_id = azurerm_network_security_group.target.id
   depends_on_override {
     id        = azurerm_resource_group.test.id
     target_id = azurerm_resource_group.target.id
