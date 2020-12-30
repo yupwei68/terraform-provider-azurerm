@@ -31,5 +31,6 @@ func (r Registration) SupportedResources() map[string]*schema.Resource {
 		"azurerm_resource_mover_move_resource_public_ip":              resourceResourceMoverMoveResourcePublicIP(),
 		"azurerm_resource_mover_move_resource_network_security_group": resourceResourceMoverMoveResourceNetworkSecurityGroup(),
 		"azurerm_resource_mover_move_resource_virtual_network":        resourceResourceMoverMoveResourceVirtualNetwork(),
+		"azurerm_resource_mover_move_resource_network_interface":      resourceResourceMoverMoveResourceNetworkInterface(),
 	}
 }
