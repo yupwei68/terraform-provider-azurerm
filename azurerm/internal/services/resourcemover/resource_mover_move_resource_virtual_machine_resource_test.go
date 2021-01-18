@@ -141,6 +141,7 @@ resource "azurerm_virtual_network" "test" {
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_mover_move_collection.test.source_region
   resource_group_name = azurerm_resource_group.test.name
+
 }
 
 resource "azurerm_subnet" "test" {
@@ -201,7 +202,7 @@ resource "azurerm_virtual_machine" "test" {
   location              = azurerm_resource_mover_move_collection.test.source_region
   resource_group_name   = azurerm_resource_group.test.name
   network_interface_ids = [azurerm_network_interface.test.id]
-  vm_size               = "Standard_E4-2as_v4"
+  vm_size               = "Standard_DS1_v2"
 
   storage_image_reference {
     publisher = "Canonical"
@@ -218,7 +219,7 @@ resource "azurerm_virtual_machine" "test" {
   }
 
   os_profile {
-    computer_name  = "winhost01"
+    computer_name  = "host01"
     admin_username = "testadmin"
     admin_password = "Password1234!"
   }
@@ -236,7 +237,7 @@ resource "azurerm_resource_mover_move_resource_virtual_network" "test" {
     target_resource_name = "acctestRG-target-vn"
   }
 
-  depends_on = [azurerm_resource_mover_move_resource_resource_group.test]
+  depends_on = [azurerm_resource_mover_move_resource_resource_group.test,azurerm_resource_mover_move_resource_network_security_group.test]
 }
 
 resource "azurerm_resource_mover_move_resource_public_ip" "test" {
@@ -284,7 +285,7 @@ resource "azurerm_resource_mover_move_resource_virtual_machine" "test" {
   source_id          = azurerm_virtual_machine.test.id
   resource_setting {
     target_resource_name = "acctestRG-target-vm"
-    target_vm_size       = "Standard_F4s_v2"
+target_vm_size       = "Standard_B2s"
   }
 
   depends_on = [azurerm_resource_mover_move_resource_network_interface.test]
@@ -317,7 +318,7 @@ resource "azurerm_resource_mover_move_resource_virtual_machine" "test" {
   source_id          = azurerm_virtual_machine.test.id
   resource_setting {
     target_resource_name = "acctestRG-target-vm"
-    target_vm_size       = "Standard_F2s_v2"
+    target_vm_size       = "Standard_B2s"
   }
 
   depends_on = [azurerm_resource_mover_move_resource_network_interface.test]
@@ -396,15 +397,15 @@ resource "azurerm_subnet_network_security_group_association" "target" {
 
 resource "azurerm_virtual_machine" "target" {
   name                  = "acctvm-target-%[2]d"
-  location              = azurerm_resource_mover_move_collection.test.source_region
-  resource_group_name   = azurerm_resource_group.test.name
-  network_interface_ids = [azurerm_network_interface.test.id]
-  vm_size               = "Standard_F2s_v2"
+  location              = azurerm_resource_group.target.location
+  resource_group_name   = azurerm_resource_group.target.name
+  network_interface_ids = [azurerm_network_interface.target.id]
+  vm_size               = "Standard_B2s"
 
   storage_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServer"
-    sku       = "2019-Datacenter"
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
     version   = "latest"
   }
 
@@ -416,13 +417,13 @@ resource "azurerm_virtual_machine" "target" {
   }
 
   os_profile {
-    computer_name  = "winhost01"
+    computer_name  = "host01"
     admin_username = "testadmin"
     admin_password = "Password1234!"
   }
 
-  os_profile_windows_config {
-    timezone = "Pacific Standard Time"
+  os_profile_linux_config {
+    disable_password_authentication = false
   }
 }
 
