@@ -1,4 +1,4 @@
-package confluent
+package confluent_test
 
 import (
 	"fmt"
@@ -110,9 +110,9 @@ func testCheckAzureRMconfluentOrganizationExists(resourceName string) resource.T
 		if err != nil {
 			return err
 		}
-		if resp, err := client.Get(ctx, id.ResourceGroup, id.Name); err != nil {
+		if resp, err := client.Get(ctx, id.ResourceGroup, id.OrganizationName); err != nil {
 			if utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("bad: Confluent Organization %q does not exist", id.Name)
+				return fmt.Errorf("bad: Confluent Organization %q does not exist", id.OrganizationName)
 			}
 			return fmt.Errorf("bad: Get on Confluent.OrganizationClient: %+v", err)
 		}
@@ -132,7 +132,7 @@ func testCheckAzureRMconfluentOrganizationDestroy(s *terraform.State) error {
 		if err != nil {
 			return err
 		}
-		if resp, err := client.Get(ctx, id.ResourceGroup, id.Name); err != nil {
+		if resp, err := client.Get(ctx, id.ResourceGroup, id.OrganizationName); err != nil {
 			if !utils.ResponseWasNotFound(resp.Response) {
 				return fmt.Errorf("bad: Get on Confluent.OrganizationClient: %+v", err)
 			}
