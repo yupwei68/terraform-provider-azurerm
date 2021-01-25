@@ -16,6 +16,7 @@ var services = mapOf(
         "cdn" to "CDN",
         "cognitive" to "Cognitive Services",
         "compute" to "Compute",
+        "confluent" to "Confluent",
         "containers" to "Container Services",
         "cosmos" to "CosmosDB",
         "costmanagement" to "Cost Management",

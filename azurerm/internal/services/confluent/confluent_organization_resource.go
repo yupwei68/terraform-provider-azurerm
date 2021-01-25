@@ -40,9 +40,10 @@ func resourceArmConfluentOrganization() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validate.ConfluentOrganizationName,
 			},
 
 			"resource_group_name": azure.SchemaResourceGroupName(),
