@@ -3,10 +3,11 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2019-06-01/insights"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -45,7 +46,6 @@ func resourceMonitorLogProfile() *schema.Resource {
 				ForceNew:     true,
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
-
 			"location": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -53,7 +53,6 @@ func resourceMonitorLogProfile() *schema.Resource {
 				StateFunc:        location.StateFunc,
 				DiffSuppressFunc: location.DiffSuppressFunc,
 			},
-
 			"storage_account_id": {
 				Type:         schema.TypeString,
 				Optional:     true,

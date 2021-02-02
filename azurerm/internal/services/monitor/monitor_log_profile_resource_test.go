@@ -30,7 +30,7 @@ func TestAccMonitorLogProfile(t *testing.T) {
 			"basic":          testAccMonitorLogProfile_basic,
 			"requiresImport": testAccMonitorLogProfile_requiresImport,
 			"servicebus":     testAccMonitorLogProfile_servicebus,
-			"complete":       testAccMonitorLogProfile_complete,
+			"complete":       TestAccMonitorLogProfile_complete,
 			"disappears":     testAccMonitorLogProfile_disappears,
 			"update":         testAccMonitorLogProfile_update,
 		},
@@ -100,7 +100,7 @@ func testAccMonitorLogProfile_servicebus(t *testing.T) {
 	})
 }
 
-func testAccMonitorLogProfile_complete(t *testing.T) {
+func TestAccMonitorLogProfile_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_monitor_log_profile", "test")
 	r := MonitorLogProfileResource{}
 
