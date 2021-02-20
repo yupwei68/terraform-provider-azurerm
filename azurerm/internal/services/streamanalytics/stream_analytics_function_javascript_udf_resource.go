@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/streamanalytics/mgmt/2016-03-01/streamanalytics"
+	"github.com/Azure/azure-sdk-for-go/services/preview/streamanalytics/mgmt/2020-03-01-preview/streamanalytics"
 	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -142,7 +142,7 @@ func resourceStreamAnalyticsFunctionUDFCreateUpdate(d *schema.ResourceData, meta
 	function := streamanalytics.Function{
 		Properties: &streamanalytics.ScalarFunctionProperties{
 			Type: streamanalytics.TypeScalar,
-			ScalarFunctionConfiguration: &streamanalytics.ScalarFunctionConfiguration{
+			FunctionConfiguration: &streamanalytics.FunctionConfiguration{
 				Binding: &streamanalytics.JavaScriptFunctionBinding{
 					Type: streamanalytics.TypeMicrosoftStreamAnalyticsJavascriptUdf,
 					JavaScriptFunctionBindingProperties: &streamanalytics.JavaScriptFunctionBindingProperties{
@@ -207,22 +207,27 @@ func resourceStreamAnalyticsFunctionUDFRead(d *schema.ResourceData, meta interfa
 			return fmt.Errorf("converting Props to a Scalar Function")
 		}
 
-		binding, ok := scalarProps.Binding.AsJavaScriptFunctionBinding()
-		if !ok {
-			return fmt.Errorf("converting Binding to a JavaScript Function Binding")
+		if config := scalarProps.FunctionConfiguration; config != nil {
+
+			binding, ok := config.Binding.AsJavaScriptFunctionBinding()
+			if !ok {
+				return fmt.Errorf("converting Binding to a JavaScript Function Binding")
+			}
+
+			if bindingProps := binding.JavaScriptFunctionBindingProperties; bindingProps != nil {
+				d.Set("script", bindingProps.Script)
+			}
+
+			if err := d.Set("input", flattenStreamAnalyticsFunctionInputs(config.Inputs)); err != nil {
+				return fmt.Errorf("flattening `input`: %+v", err)
+			}
+
+			if err := d.Set("output", flattenStreamAnalyticsFunctionOutput(config.Output)); err != nil {
+				return fmt.Errorf("flattening `output`: %+v", err)
+			}
+
 		}
 
-		if bindingProps := binding.JavaScriptFunctionBindingProperties; bindingProps != nil {
-			d.Set("script", bindingProps.Script)
-		}
-
-		if err := d.Set("input", flattenStreamAnalyticsFunctionInputs(scalarProps.Inputs)); err != nil {
-			return fmt.Errorf("flattening `input`: %+v", err)
-		}
-
-		if err := d.Set("output", flattenStreamAnalyticsFunctionOutput(scalarProps.Output)); err != nil {
-			return fmt.Errorf("flattening `output`: %+v", err)
-		}
 	}
 
 	return nil
