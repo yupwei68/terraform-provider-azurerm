@@ -26,7 +26,7 @@ func TestAccStreamAnalyticsFunctionJavaScriptUDF_basic(t *testing.T) {
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
 		},
-		data.ImportStep(),
+		data.ImportStep("input.#", "input.0.type", "output.#", "output.0.type", "script"),
 	})
 }
 
@@ -56,14 +56,14 @@ func TestAccStreamAnalyticsFunctionJavaScriptUDF_inputs(t *testing.T) {
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
 		},
-		data.ImportStep(),
+		data.ImportStep("input.#", "input.0.type", "output.#", "output.0.type", "script"),
 		{
 			Config: r.inputs(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
 		},
-		data.ImportStep(),
+		data.ImportStep("input.#", "input.0.type", "input.1.type", "output.#", "output.0.type", "script"),
 	})
 }
 
