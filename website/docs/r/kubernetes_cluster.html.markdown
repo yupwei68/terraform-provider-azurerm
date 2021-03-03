@@ -110,7 +110,7 @@ In addition, one of either `identity` or `service_principal` blocks must be spec
 
 * `private_dns_zone_id` - (Optional) Either the ID of Private DNS Zone which should be delegated to this Cluster, or `System` to have AKS manage this.
 
--> **NOTE:** If you use BYO DNS Zone, AKS cluster should use identity type `UserAssigned` with `Private DNS Zone Contributor` role assigned to this identity for the zone. Next to it to prevent improper resource order destruction - cluster should depend on the role assignment, like in this example:
+-> **NOTE:** If you use BYO DNS Zone, AKS cluster should either use a User Assigned Identity or a service principal (which is deprecated) with the `Private DNS Zone Contributor` role and access to this Private DNS Zone. If `UserAssigned` identity is used - to prevent improper resource order destruction - cluster should depend on the role assignment, like in this example:
 
 ```
 resource "azurerm_resource_group" "example" {
@@ -548,13 +548,12 @@ The `kube_admin_config` and `kube_config` blocks export the following:
 
 ```
 provider "kubernetes" {
-  load_config_file       = "false"
   host                   = azurerm_kubernetes_cluster.main.kube_config.0.host
   username               = azurerm_kubernetes_cluster.main.kube_config.0.username
   password               = azurerm_kubernetes_cluster.main.kube_config.0.password
-  client_certificate     = "${base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_certificate)}"
-  client_key             = "${base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_key)}"
-  cluster_ca_certificate = "${base64decode(azurerm_kubernetes_cluster.main.kube_config.0.cluster_ca_certificate)}"
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.main.kube_config.0.cluster_ca_certificate)
 }
 ```
 
