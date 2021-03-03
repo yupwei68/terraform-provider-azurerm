@@ -469,8 +469,8 @@ func (client InputsClient) Test(ctx context.Context, resourceGroupName string, j
 		ctx = tracing.StartSpan(ctx, fqdn+"/InputsClient.Test")
 		defer func() {
 			sc := -1
-			if result.Response() != nil {
-				sc = result.Response().StatusCode
+			if result.FutureAPI != nil && result.FutureAPI.Response() != nil {
+				sc = result.FutureAPI.Response().StatusCode
 			}
 			tracing.EndSpan(ctx, sc, err)
 		}()
@@ -550,7 +550,11 @@ func (client InputsClient) TestSender(req *http.Request) (future InputsTestFutur
 			return
 		}
 		sender := autorest.DecorateSender(client, autorest.DoRetryForStatusCodes(client.RetryAttempts, client.RetryDuration, autorest.StatusCodesForRetry...))
-		if rts.Response.Response, err = future.GetResult(sender); err == nil && rts.Response.Response.StatusCode != http.StatusNoContent {
+		rts.Response.Response, err = future.GetResult(sender)
+		if rts.Response.Response == nil && err == nil {
+			err = autorest.NewErrorWithError(err, "streamanalytics.InputsTestFuture", "Result", nil, "received nil response and error")
+		}
+		if err == nil && rts.Response.Response.StatusCode != http.StatusNoContent {
 			rts, err = client.TestResponder(rts.Response.Response)
 			if err != nil {
 				err = autorest.NewErrorWithError(err, "streamanalytics.InputsTestFuture", "Result", rts.Response.Response, "Failure responding to request")
