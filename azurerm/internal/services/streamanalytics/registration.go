@@ -28,6 +28,7 @@ func (r Registration) SupportedDataSources() map[string]*schema.Resource {
 // SupportedResources returns the supported Resources supported by this Service
 func (r Registration) SupportedResources() map[string]*schema.Resource {
 	return map[string]*schema.Resource{
+		"azurerm_stream_analytics_cluster":                 resourceStreamAnalyticsCluster(),
 		"azurerm_stream_analytics_job":                     resourceStreamAnalyticsJob(),
 		"azurerm_stream_analytics_function_javascript_udf": resourceStreamAnalyticsFunctionUDF(),
 		"azurerm_stream_analytics_output_blob":             resourceStreamAnalyticsOutputBlob(),
