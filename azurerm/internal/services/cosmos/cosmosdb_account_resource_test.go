@@ -867,6 +867,25 @@ resource "azurerm_cosmosdb_account" "test" {
     location          = "%[6]s"
     failover_priority = 2
   }
+backup_policy{
+type = "Periodic"
+interval_in_minutes = 120
+retention_in_hours = 10
+}
+
+cors_rule {
+      allowed_origins    = ["http://www.example.com"]
+      exposed_headers    = ["x-tempo-*"]
+      allowed_headers    = ["x-tempo-*"]
+      allowed_methods    = ["GET", "PUT", "PATCH"]
+      max_age_in_seconds = "500"
+    }
+
+connector_offer = "Small"
+enable_key_based_meta_write_access = false
+enable_cassandra_connector = true
+network_acl_bypass = "AzureServices"
+
 }
 `, r.completePreReqs(data), data.RandomInteger, string(kind), string(consistency), data.Locations.Secondary, data.Locations.Ternary)
 }
@@ -918,6 +937,24 @@ resource "azurerm_cosmosdb_account" "test" {
     location          = "%[5]s"
     failover_priority = 2
   }
+
+backup_policy{
+type = "Periodic"
+interval_in_minutes = 120
+retention_in_hours = 10
+}
+cors_rule {
+      allowed_origins    = ["http://www.example.com"]
+      exposed_headers    = ["x-tempo-*"]
+      allowed_headers    = ["x-tempo-*"]
+      allowed_methods    = ["GET", "PUT", "PATCH"]
+      max_age_in_seconds = "500"
+    }
+connector_offer = "Small"
+enable_key_based_meta_write_access = false
+enable_cassandra_connector = true
+network_acl_bypass = "AzureServices"
+
 }
 `, r.completePreReqs(data), data.RandomInteger, string(consistency), data.Locations.Secondary, data.Locations.Ternary)
 }
@@ -1045,6 +1082,30 @@ resource "azurerm_cosmosdb_account" "test" {
     location          = "%[6]s"
     failover_priority = 2
   }
+
+backup_policy{
+type = "Continuous"
+}
+
+cors_rule {
+      allowed_origins    = ["http://www.example.com"]
+      exposed_headers    = ["x-tempo-*", "x-method-*"]
+      allowed_headers    = ["*"]
+      allowed_methods    = ["GET"]
+      max_age_in_seconds = "2000000000"
+    }
+
+    cors_rule {
+      allowed_origins    = ["http://www.test.com"]
+      exposed_headers    = ["x-tempo-*"]
+      allowed_headers    = ["*"]
+      allowed_methods    = ["PUT"]
+      max_age_in_seconds = "1000"
+    }
+
+enable_key_based_meta_write_access = true
+enable_cassandra_connector = false
+network_acl_bypass = "None"
 }
 `, r.completePreReqs(data), data.RandomInteger, string(kind), string(consistency), data.Locations.Secondary, data.Locations.Ternary)
 }
@@ -1092,6 +1153,31 @@ resource "azurerm_cosmosdb_account" "test" {
     location          = "%[5]s"
     failover_priority = 2
   }
+
+backup_policy{
+type = "Continuous"
+}
+
+cors_rule {
+      allowed_origins    = ["http://www.example.com"]
+      exposed_headers    = ["x-tempo-*", "x-method-*"]
+      allowed_headers    = ["*"]
+      allowed_methods    = ["GET"]
+      max_age_in_seconds = "2000000000"
+    }
+
+    cors_rule {
+      allowed_origins    = ["http://www.test.com"]
+      exposed_headers    = ["x-tempo-*"]
+      allowed_headers    = ["*"]
+      allowed_methods    = ["PUT"]
+      max_age_in_seconds = "1000"
+    }
+
+enable_key_based_meta_write_access = true
+enable_cassandra_connector = false
+network_acl_bypass = "None"
+
 }
 `, r.completePreReqs(data), data.RandomInteger, string(consistency), data.Locations.Secondary, data.Locations.Ternary)
 }
