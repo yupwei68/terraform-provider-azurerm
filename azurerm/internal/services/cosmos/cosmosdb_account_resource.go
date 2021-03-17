@@ -215,6 +215,7 @@ func resourceCosmosDbAccount() *schema.Resource {
 			"capabilities": {
 				Type:     schema.TypeSet,
 				Optional: true,
+				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
@@ -371,6 +372,7 @@ func resourceCosmosDbAccount() *schema.Resource {
 			"mongo_server_version": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 				ValidateFunc: validation.StringInSlice([]string{
 					string(documentdb.ThreeFullStopTwo),
 					string(documentdb.ThreeFullStopSix),
@@ -565,14 +567,8 @@ func resourceCosmosDbAccountCreate(d *schema.ResourceData, meta interface{}) err
 		Tags: tags.Expand(t),
 	}
 
-	//mongo db default to v3.6
-	if kind == string(documentdb.MongoDB) {
-		account.DatabaseAccountCreateUpdateProperties.APIProperties = &documentdb.APIProperties{
-			ServerVersion: documentdb.ThreeFullStopSix,
-		}
-		if v, ok := d.GetOk("mongo_server_version"); ok {
-			account.DatabaseAccountCreateUpdateProperties.APIProperties.ServerVersion = documentdb.ServerVersion(v.(string))
-		}
+	if v, ok := d.GetOk("mongo_server_version"); ok {
+		account.DatabaseAccountCreateUpdateProperties.APIProperties.ServerVersion = documentdb.ServerVersion(v.(string))
 	}
 
 	if v, ok := d.GetOk("backup_policy"); ok {
@@ -681,10 +677,6 @@ func resourceCosmosDbAccountUpdate(d *schema.ResourceData, meta interface{}) err
 			return fmt.Errorf("expanding CosmosDB Account %q (Resource Group %q) geo locations: %+v", id.Name, id.ResourceGroup, err)
 		}
 		account.DatabaseAccountUpdateProperties.Locations = &geoLocations
-	}
-
-	if d.HasChange("capabilities") {
-		account.DatabaseAccountUpdateProperties.Capabilities = expandAzureRmCosmosDBAccountCapabilities(d)
 	}
 
 	if d.HasChange("is_virtual_network_filter_enabled") {
@@ -1057,6 +1049,7 @@ func expandAzureRmCosmosDBAccountGeoLocations(d *schema.ResourceData) ([]documen
 		data := l.(map[string]interface{})
 
 		location := documentdb.Location{
+			ID:               utils.String(data["id"].(string)),
 			LocationName:     utils.String(azure.NormalizeLocation(data["location"].(string))),
 			FailoverPriority: utils.Int32(int32(data["failover_priority"].(int))),
 			IsZoneRedundant:  utils.Bool(data["zone_redundant"].(bool)),

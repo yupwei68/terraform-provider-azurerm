@@ -874,10 +874,10 @@ retention_in_hours = 10
 }
 
 cors_rule {
-      allowed_origins    = ["http://www.example.com"]
-      exposed_headers    = ["x-tempo-*"]
-      allowed_headers    = ["x-tempo-*"]
-      allowed_methods    = ["GET", "PUT", "PATCH"]
+      allowed_origins    = "http://www.example.com"
+      exposed_headers    = "x-tempo-*"
+      allowed_headers    = "x-tempo-*"
+      allowed_methods    = "GET,PUT,PATCH"
       max_age_in_seconds = "500"
     }
 
@@ -944,10 +944,10 @@ interval_in_minutes = 120
 retention_in_hours = 10
 }
 cors_rule {
-      allowed_origins    = ["http://www.example.com"]
-      exposed_headers    = ["x-tempo-*"]
-      allowed_headers    = ["x-tempo-*"]
-      allowed_methods    = ["GET", "PUT", "PATCH"]
+      allowed_origins    = "http://www.example.com"
+      exposed_headers    = "x-tempo-*"
+      allowed_headers    = "x-tempo-*"
+      allowed_methods    = "GET,PUT,PATCH"
       max_age_in_seconds = "500"
     }
 connector_offer = "Small"
@@ -1088,18 +1088,18 @@ type = "Continuous"
 }
 
 cors_rule {
-      allowed_origins    = ["http://www.example.com"]
-      exposed_headers    = ["x-tempo-*", "x-method-*"]
-      allowed_headers    = ["*"]
-      allowed_methods    = ["GET"]
+      allowed_origins    = "http://www.example.com"
+      exposed_headers    = "x-tempo-*,x-method-*"
+      allowed_headers    = "*"
+      allowed_methods    = "GET"
       max_age_in_seconds = "2000000000"
     }
 
     cors_rule {
-      allowed_origins    = ["http://www.test.com"]
-      exposed_headers    = ["x-tempo-*"]
-      allowed_headers    = ["*"]
-      allowed_methods    = ["PUT"]
+      allowed_origins    = "http://www.test.com"
+      exposed_headers    = "x-tempo-*"
+      allowed_headers    = "*"
+      allowed_methods    = "PUT"
       max_age_in_seconds = "1000"
     }
 
@@ -1159,18 +1159,18 @@ type = "Continuous"
 }
 
 cors_rule {
-      allowed_origins    = ["http://www.example.com"]
-      exposed_headers    = ["x-tempo-*", "x-method-*"]
-      allowed_headers    = ["*"]
-      allowed_methods    = ["GET"]
+      allowed_origins    = "http://www.example.com"
+      exposed_headers    = "x-tempo-*,x-method-*"
+      allowed_headers    = "*"
+      allowed_methods    = "GET"
       max_age_in_seconds = "2000000000"
     }
 
     cors_rule {
-      allowed_origins    = ["http://www.test.com"]
-      exposed_headers    = ["x-tempo-*"]
-      allowed_headers    = ["*"]
-      allowed_methods    = ["PUT"]
+      allowed_origins    = "http://www.test.com"
+      exposed_headers    = "x-tempo-*"
+      allowed_headers    = "*"
+      allowed_methods    = "PUT"
       max_age_in_seconds = "1000"
     }
 
