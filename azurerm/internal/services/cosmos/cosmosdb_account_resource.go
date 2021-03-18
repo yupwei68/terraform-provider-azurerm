@@ -631,6 +631,18 @@ func resourceCosmosDbAccountUpdate(d *schema.ResourceData, meta interface{}) err
 		return err
 	}
 
+	if d.HasChange("geo_location") {
+		geoLocations, err := expandAzureRmCosmosDBAccountGeoLocations(d)
+		if err != nil {
+			return fmt.Errorf("expanding CosmosDB Account %q (Resource Group %q) geo locations: %+v", id.Name, id.ResourceGroup, err)
+		}
+		account := documentdb.DatabaseAccountUpdateParameters{
+			DatabaseAccountUpdateProperties: &documentdb.DatabaseAccountUpdateProperties{
+				Locations: geoLocations,
+			},
+		}
+	}
+
 	account := documentdb.DatabaseAccountUpdateParameters{
 		DatabaseAccountUpdateProperties: &documentdb.DatabaseAccountUpdateProperties{},
 	}
@@ -671,12 +683,22 @@ func resourceCosmosDbAccountUpdate(d *schema.ResourceData, meta interface{}) err
 		account.DatabaseAccountUpdateProperties.ConsistencyPolicy = expandAzureRmCosmosDBAccountConsistencyPolicy(d)
 	}
 
+	//Cannot update properties and add/remove regions at the same time.
 	if d.HasChange("geo_location") {
 		geoLocations, err := expandAzureRmCosmosDBAccountGeoLocations(d)
 		if err != nil {
 			return fmt.Errorf("expanding CosmosDB Account %q (Resource Group %q) geo locations: %+v", id.Name, id.ResourceGroup, err)
 		}
 		account.DatabaseAccountUpdateProperties.Locations = &geoLocations
+
+		future, err := client.Update(ctx, id.ResourceGroup, id.Name, account)
+		if err != nil {
+			return fmt.Errorf("updating CosmosDB Account %q (Resource Group %q) `geo_location`: %+v", id.Name, id.ResourceGroup, err)
+		}
+
+		if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
+			return fmt.Errorf("waiting for the update of the CosmosDB Account %q (Resource Group %q) `geo_location`: %+v", id.Name, id.ResourceGroup, err)
+		}
 	}
 
 	if d.HasChange("is_virtual_network_filter_enabled") {
