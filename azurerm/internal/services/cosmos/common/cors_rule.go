@@ -26,7 +26,7 @@ func SchemaCorsRule(patchEnabled bool) *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
-		MaxItems: 5,
+		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"allowed_origins": {
@@ -75,7 +75,7 @@ func ExpandCosmosCorsRule(input []interface{}) *[]documentdb.CorsPolicy {
 		corsRule := documentdb.CorsPolicy{}
 		corsRule.AllowedOrigins = utils.String(corsRuleAttr["allowed_origins"].(string))
 		corsRule.AllowedHeaders = utils.String(corsRuleAttr["allowed_headers"].(string))
-		corsRule.AllowedMethods = utils.String(corsRuleAttr["allowed_headers"].(string))
+		corsRule.AllowedMethods = utils.String(corsRuleAttr["allowed_methods"].(string))
 		corsRule.ExposedHeaders = utils.String(corsRuleAttr["exposed_headers"].(string))
 		corsRule.MaxAgeInSeconds = utils.Int64(int64(corsRuleAttr["max_age_in_seconds"].(int)))
 		corsRules = append(corsRules, corsRule)
