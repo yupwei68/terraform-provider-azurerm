@@ -60,63 +60,17 @@ func (b Builder) Build() (*Config, error) {
 		CustomResourceManagerEndpoint: b.CustomResourceManagerEndpoint,
 	}
 
-	// NOTE: the ordering here is important
-	// since the Azure CLI Parsing should always be the last thing checked
-	supportedAuthenticationMethods := []authMethod{
-		servicePrincipalClientCertificateAuth{},
-		servicePrincipalClientSecretMultiTenantAuth{},
-		servicePrincipalClientSecretAuth{},
-		managedServiceIdentityAuth{},
-		azureCliTokenMultiTenantAuth{},
-		azureCliTokenAuth{},
+	// build track 1 authozior
+	if err := b.buildTrack1Authorizor(&config); err != nil {
+		return nil, err
 	}
 
-	// TODO -- add a similar sequence for track 2 credential
-
-	for _, method := range supportedAuthenticationMethods {
-		name := method.name()
-		log.Printf("Testing if %s is applicable for Authentication..", name)
-
-		// does not support it via validate?
-		if !method.isApplicable(b) {
-			continue
-		}
-
-		log.Printf("Using %s for Authentication", name)
-		auth, err := method.build(b)
-		if err != nil {
-			return nil, err
-		}
-
-		// populate authentication specific fields on the Config
-		// (e.g. is service principal, fields parsed from the azure cli)
-		err = auth.populateConfig(&config)
-		if err != nil {
-			return nil, err
-		}
-
-		config.authMethod = auth
-
-		// Authenticated Object ID Cache
-		if config.GetAuthenticatedObjectID != nil {
-			uncachedFunction := config.GetAuthenticatedObjectID
-			config.GetAuthenticatedObjectID = func(ctx context.Context) (string, error) {
-				if authenticatedObjectCache == "" {
-					authenticatedObjectCache, err = uncachedFunction(ctx)
-					if err != nil {
-						return "", err
-					}
-					log.Printf("authenticated object ID cache miss, populating with: %q", authenticatedObjectCache)
-				}
-
-				return authenticatedObjectCache, nil
-			}
-		}
-
-		return &config, config.authMethod.validate()
+	// build track 2 credential
+	if err := b.buildTrack2Credential(&config); err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("No supported authentication methods were found!")
+	return &config, nil
 }
 
 func (b Builder) buildTrack1Authorizor(config *Config) error {
