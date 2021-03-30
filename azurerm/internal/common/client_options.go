@@ -60,7 +60,7 @@ func (o ClientOptions) BuildResourceManagerConnection(cred azcore.TokenCredentia
 	// TODO -- needs a way to put policy.NewRequestLoggingPolicy("AzureRM") in
 	o.ResourceManagerConnection = armcore.NewConnection(o.ResourceManagerEndpoint, cred, &armcore.ConnectionOptions{
 		Telemetry: azcore.TelemetryOptions{
-			Value:         TelemetryValue(o.TerraformVersion, o.PartnerId, o.DisableTerraformPartnerID),
+			Value: TelemetryValue(o.TerraformVersion, o.PartnerId, o.DisableTerraformPartnerID),
 		},
 	})
 }
