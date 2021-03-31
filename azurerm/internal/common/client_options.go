@@ -56,11 +56,14 @@ func (o ClientOptions) ConfigureClient(c *autorest.Client, authorizer autorest.A
 	}
 }
 
-func (o ClientOptions) BuildResourceManagerConnection(cred azcore.TokenCredential) {
+func (o *ClientOptions) BuildResourceManagerConnection(cred azcore.TokenCredential) {
 	// TODO -- needs a way to put policy.NewRequestLoggingPolicy("AzureRM") in
 	o.ResourceManagerConnection = armcore.NewConnection(o.ResourceManagerEndpoint, cred, &armcore.ConnectionOptions{
 		Telemetry: azcore.TelemetryOptions{
 			Value: TelemetryValue(o.TerraformVersion, o.PartnerId, o.DisableTerraformPartnerID),
+		},
+		Logging: azcore.LogOptions{
+			IncludeBody: true,
 		},
 	})
 }
