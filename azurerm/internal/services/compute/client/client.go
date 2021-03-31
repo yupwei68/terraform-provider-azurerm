@@ -1,13 +1,14 @@
 package client
 
 import (
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/marketplaceordering/mgmt/2015-06-01/marketplaceordering"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 )
 
 type Client struct {
-	AvailabilitySetsClient          *compute.AvailabilitySetsClient
+	AvailabilitySetsClient          *armcompute.AvailabilitySetsClient
 	DedicatedHostsClient            *compute.DedicatedHostsClient
 	DedicatedHostGroupsClient       *compute.DedicatedHostGroupsClient
 	DisksClient                     *compute.DisksClient
@@ -33,9 +34,6 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) *Client {
-	availabilitySetsClient := compute.NewAvailabilitySetsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&availabilitySetsClient.Client, o.ResourceManagerAuthorizer)
-
 	dedicatedHostsClient := compute.NewDedicatedHostsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&dedicatedHostsClient.Client, o.ResourceManagerAuthorizer)
 
@@ -103,7 +101,7 @@ func NewClient(o *common.ClientOptions) *Client {
 	o.ConfigureClient(&sshPublicKeysClient.Client, o.ResourceManagerAuthorizer)
 
 	return &Client{
-		AvailabilitySetsClient:          &availabilitySetsClient,
+		AvailabilitySetsClient:          armcompute.NewAvailabilitySetsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DedicatedHostsClient:            &dedicatedHostsClient,
 		DedicatedHostGroupsClient:       &dedicatedHostGroupsClient,
 		DisksClient:                     &disksClient,
