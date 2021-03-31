@@ -30,4 +30,6 @@ require (
 
 replace github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azure-helpers v0.15.0
 
+replace github.com/Azure/azure-sdk-for-go/sdk/arm/compute => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/compute v0.3.0
+
 go 1.16
