@@ -91,7 +91,7 @@ Alternatively you can authenticate using the Azure CLI by using a User Account.`
 }
 
 func (a azureCliTokenAuth) buildAuthMethodTrack2(b Builder) (authMethodTrack2, error) {
-	return azureCliTokenAuth{
+	auth := azureCliTokenAuth{
 
 		profile: &azureCLIProfile{
 			subscriptionId: b.SubscriptionID,
@@ -100,7 +100,51 @@ func (a azureCliTokenAuth) buildAuthMethodTrack2(b Builder) (authMethodTrack2, e
 			clientId:       "04b07795-8ddb-461a-bbee-02f9e1bf7b46", // fixed first party client id for Az CLI
 		},
 		servicePrincipalAuthDocsLink: b.ClientSecretDocsLink,
-	}, nil
+	}
+
+	if err := auth.checkAzVersion(); err != nil {
+		return nil, err
+	}
+
+	var acc *cli.Subscription
+	if auth.profile.tenantOnly {
+		var err error
+		acc, err = obtainTenant(b.TenantID)
+		if err != nil {
+			return nil, fmt.Errorf("obtain tenant(%s) from Azure CLI: %+v", b.TenantID, err)
+		}
+		auth.profile.account = acc
+	} else {
+		var err error
+		acc, err = obtainSubscription(b.SubscriptionID)
+		if err != nil {
+			return nil, fmt.Errorf("obtain subscription(%s) from Azure CLI: %+v", b.SubscriptionID, err)
+		}
+		auth.profile.account = acc
+	}
+
+	// Authenticating as a Service Principal doesn't return all of the information we need for authentication purposes
+	// as such Service Principal authentication is supported using the specific auth method
+	if acc.User == nil || !strings.EqualFold(acc.User.Type, "user") {
+		return nil, fmt.Errorf(`Authenticating using the Azure CLI is only supported as a User (not a Service Principal).
+
+To authenticate to Azure using a Service Principal, you can use the separate 'Authenticate using a Service Principal'
+auth method - instructions for which can be found here: %s
+
+Alternatively you can authenticate using the Azure CLI by using a User Account.`, auth.servicePrincipalAuthDocsLink)
+	}
+
+	// Populate fields
+	if !b.TenantOnly && auth.profile.subscriptionId == "" {
+		auth.profile.subscriptionId = acc.ID
+	}
+	if auth.profile.tenantId == "" {
+		auth.profile.tenantId = acc.TenantID
+	}
+	// always pull the environment from the Azure CLI, since the Access Token's associated with it
+	auth.profile.environment = normalizeEnvironmentName(acc.EnvironmentName)
+
+	return auth, nil
 }
 
 func (a azureCliTokenAuth) isApplicable(b Builder) bool {

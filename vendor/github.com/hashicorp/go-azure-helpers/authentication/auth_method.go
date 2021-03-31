@@ -6,7 +6,6 @@ import (
 )
 
 type authMethodBase interface {
-
 	isApplicable(b Builder) bool
 
 	name() string

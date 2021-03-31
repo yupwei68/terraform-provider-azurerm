@@ -135,6 +135,7 @@ func (b Builder) buildTrack2Credential(config *Config) error {
 	// NOTE: the ordering here is important
 	// since the Azure CLI Parsing should always be the last thing checked
 	supportedAuthenticationMethods := []authMethodTrack2{
+		servicePrincipalClientCertificateAuth{},
 		servicePrincipalClientSecretAuth{},
 		azureCliTokenAuth{},
 	}
