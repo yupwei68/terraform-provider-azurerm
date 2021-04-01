@@ -20,7 +20,7 @@ type Client struct {
 	ProximityPlacementGroupsClient  *compute.ProximityPlacementGroupsClient
 	MarketplaceAgreementsClient     *marketplaceordering.MarketplaceAgreementsClient
 	ImagesClient                    *compute.ImagesClient
-	SnapshotsClient                 *compute.SnapshotsClient
+	SnapshotsClient                 *armcompute.SnapshotsClient
 	UsageClient                     *compute.UsageClient
 	VMExtensionImageClient          *compute.VirtualMachineExtensionImagesClient
 	VMExtensionClient               *compute.VirtualMachineExtensionsClient
@@ -57,9 +57,6 @@ func NewClient(o *common.ClientOptions) *Client {
 
 	proximityPlacementGroupsClient := compute.NewProximityPlacementGroupsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&proximityPlacementGroupsClient.Client, o.ResourceManagerAuthorizer)
-
-	snapshotsClient := compute.NewSnapshotsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&snapshotsClient.Client, o.ResourceManagerAuthorizer)
 
 	usageClient := compute.NewUsageClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&usageClient.Client, o.ResourceManagerAuthorizer)
@@ -104,7 +101,7 @@ func NewClient(o *common.ClientOptions) *Client {
 		ImagesClient:                    &imagesClient,
 		MarketplaceAgreementsClient:     &marketplaceAgreementsClient,
 		ProximityPlacementGroupsClient:  &proximityPlacementGroupsClient,
-		SnapshotsClient:                 &snapshotsClient,
+		SnapshotsClient:                 armcompute.NewSnapshotsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		UsageClient:                     &usageClient,
 		VMExtensionImageClient:          &vmExtensionImageClient,
 		VMExtensionClient:               &vmExtensionClient,
