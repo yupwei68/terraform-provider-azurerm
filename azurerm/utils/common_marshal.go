@@ -12,11 +12,33 @@ func ExpandStringSlice(input []interface{}) *[]string {
 	return &result
 }
 
+func ExpandStringPtrSlice(input []interface{}) *[]*string {
+	result := make([]*string, 0)
+	for _, item := range input {
+		if item != nil {
+			result = append(result, String(item.(string)))
+		} else {
+			result = append(result, String(""))
+		}
+	}
+	return &result
+}
+
 func ExpandFloatSlice(input []interface{}) *[]float64 {
 	result := make([]float64, 0)
 	for _, item := range input {
 		if item != nil {
 			result = append(result, item.(float64))
+		}
+	}
+	return &result
+}
+
+func ExpandFloatPtrSlice(input []interface{}) *[]*float64 {
+	result := make([]*float64, 0)
+	for _, item := range input {
+		if item != nil {
+			result = append(result, Float(item.(float64)))
 		}
 	}
 	return &result
@@ -30,10 +52,24 @@ func ExpandMapStringPtrString(input map[string]interface{}) map[string]*string {
 	return result
 }
 
+func ExpandMapPtrStringPtrString(input map[string]interface{}) *map[string]*string {
+	result := ExpandMapStringPtrString(input)
+	return &result
+}
+
 func ExpandInt32Slice(input []interface{}) *[]int32 {
 	result := make([]int32, len(input))
 	for i, item := range input {
 		result[i] = int32(item.(int))
+	}
+
+	return &result
+}
+
+func ExpandInt32PtrSlice(input []interface{}) *[]*int32 {
+	result := make([]*int32, len(input))
+	for i, item := range input {
+		result[i] = Int32(int32(item.(int)))
 	}
 
 	return &result
@@ -49,11 +85,35 @@ func FlattenStringSlice(input *[]string) []interface{} {
 	return result
 }
 
+func FlattenStringPtrSlice(input *[]*string) []interface{} {
+	result := make([]interface{}, 0)
+	if input != nil {
+		for _, item := range *input {
+			if item != nil {
+				result = append(result, *item)
+			}
+		}
+	}
+	return result
+}
+
 func FlattenFloatSlice(input *[]float64) []interface{} {
 	result := make([]interface{}, 0)
 	if input != nil {
 		for _, item := range *input {
 			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func FlattenFloatPtrSlice(input *[]*float64) []interface{} {
+	result := make([]interface{}, 0)
+	if input != nil {
+		for _, item := range *input {
+			if item != nil {
+				result = append(result, item)
+			}
 		}
 	}
 	return result
@@ -71,11 +131,38 @@ func FlattenMapStringPtrString(input map[string]*string) map[string]interface{} 
 	return result
 }
 
+func FlattenMapPtrStringPtrString(input *map[string]*string) map[string]interface{} {
+	result := make(map[string]interface{})
+	if input == nil {
+		return result
+	}
+	for k, v := range *input {
+		if v == nil {
+			result[k] = ""
+		} else {
+			result[k] = *v
+		}
+	}
+	return result
+}
+
 func FlattenInt32Slice(input *[]int32) []interface{} {
 	result := make([]interface{}, 0)
 	if input != nil {
 		for _, item := range *input {
 			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func FlattenInt32PtrSlice(input *[]*int32) []interface{} {
+	result := make([]interface{}, 0)
+	if input != nil {
+		for _, item := range *input {
+			if item != nil {
+				result = append(result, item)
+			}
 		}
 	}
 	return result
