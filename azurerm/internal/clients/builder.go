@@ -110,7 +110,7 @@ func Build(ctx context.Context, builder ClientBuilder) (*Client, error) {
 	}
 
 	// Track 2 credential
-	cred, err := builder.AuthConfig.GetCredential(endpoint)
+	cred, err := builder.AuthConfig.GetCredential(env.ActiveDirectoryEndpoint, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get authorization token for track 2 resource manager: %+v", err)
 	}

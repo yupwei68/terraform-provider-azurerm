@@ -28,5 +28,5 @@ type authMethodTrack2 interface {
 
 	buildAuthMethodTrack2(b Builder) (authMethodTrack2, error)
 
-	getTokenCredential(endpoint string) (azcore.TokenCredential, error)
+	getTokenCredential(azureActiveDirectoryEndpoint, endpoint string) (azcore.TokenCredential, error)
 }

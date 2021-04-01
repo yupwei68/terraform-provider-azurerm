@@ -28,6 +28,6 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 )
 
-replace github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azure-helpers v0.14.4
+replace github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azure-helpers v0.15.0
 
 go 1.16

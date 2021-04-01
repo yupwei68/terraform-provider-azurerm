@@ -89,8 +89,11 @@ func (a servicePrincipalClientSecretAuth) validate() error {
 	return err.ErrorOrNil()
 }
 
-func (a servicePrincipalClientSecretAuth) getTokenCredential(endpoint string) (azcore.TokenCredential, error) {
+func (a servicePrincipalClientSecretAuth) getTokenCredential(azureActiveDirectoryEndpoint, endpoint string) (azcore.TokenCredential, error) {
 	return azidentity.NewClientSecretCredential(a.tenantId, a.clientId, a.clientSecret, &azidentity.ClientSecretCredentialOptions{
-		AuthorityHost: endpoint,
+		AuthorityHost: azureActiveDirectoryEndpoint,
+		Logging: azcore.LogOptions{
+			IncludeBody: true,
+		},
 	})
 }

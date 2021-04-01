@@ -249,7 +249,7 @@ func (a azureCliTokenAuth) validate() error {
 	return err.ErrorOrNil()
 }
 
-func (a azureCliTokenAuth) getTokenCredential(endpoint string) (azcore.TokenCredential, error) {
+func (a azureCliTokenAuth) getTokenCredential(azureActiveDirectoryEndpoint, endpoint string) (azcore.TokenCredential, error) {
 	return azidentity.NewAzureCLICredential(nil)
 }
 

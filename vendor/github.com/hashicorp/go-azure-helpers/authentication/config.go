@@ -127,6 +127,6 @@ func (c Config) GetAuthorizationToken(sender autorest.Sender, oauth *OAuthConfig
 	return c.authMethod.getAuthorizationToken(sender, oauth, endpoint)
 }
 
-func (c Config) GetCredential(endpoint string) (azcore.TokenCredential, error) {
-	return c.authMethodTrack2.getTokenCredential(endpoint)
+func (c Config) GetCredential(azureActiveDirectoryEndpoint, endpoint string) (azcore.TokenCredential, error) {
+	return c.authMethodTrack2.getTokenCredential(azureActiveDirectoryEndpoint, endpoint)
 }

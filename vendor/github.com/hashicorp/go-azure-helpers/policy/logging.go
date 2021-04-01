@@ -36,5 +36,18 @@ func (p requestLoggingPolicy) Do(r *azcore.Request) (*azcore.Response, error) {
 		r.Header.Add(authHeaderName, auth)
 	}
 
-	return r.Next()
+	resp, err := r.Next()
+	if resp != nil {
+		// dump response to wire format
+		if dump, err2 := httputil.DumpResponse(resp.Response, true); err2 == nil {
+			log.Printf("[DEBUG] %s Response for %s: \n%s\n", p.providerName, r.URL, dump)
+		} else {
+			// fallback to basic message
+			log.Printf("[DEBUG] %s Response: %s for %s\n", p.providerName, resp.Status, r.URL)
+		}
+	} else {
+		log.Printf("[DEBUG] Request to %s completed with no response", r.URL)
+	}
+
+	return resp, err
 }

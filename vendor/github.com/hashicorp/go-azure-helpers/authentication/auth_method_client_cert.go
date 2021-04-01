@@ -82,10 +82,10 @@ func (a servicePrincipalClientCertificateAuth) getAuthorizationToken(sender auto
 	return auth, nil
 }
 
-func (a servicePrincipalClientCertificateAuth) getTokenCredential(endpoint string) (azcore.TokenCredential, error) {
+func (a servicePrincipalClientCertificateAuth) getTokenCredential(azureActiveDirectoryEndpoint, endpoint string) (azcore.TokenCredential, error) {
 	return azidentity.NewClientCertificateCredential(a.tenantId, a.clientId, a.clientCertPath, &azidentity.ClientCertificateCredentialOptions{
 		Password:      a.clientCertPassword,
-		AuthorityHost: endpoint,
+		AuthorityHost: azureActiveDirectoryEndpoint,
 	})
 }
 
