@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/hashicorp/go-azure-helpers/policy"
 	"github.com/hashicorp/go-azure-helpers/sender"
 	"github.com/hashicorp/terraform-plugin-sdk/meta"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
@@ -64,6 +65,9 @@ func (o *ClientOptions) BuildResourceManagerConnection(cred azcore.TokenCredenti
 		},
 		Logging: azcore.LogOptions{
 			IncludeBody: true,
+		},
+		PerRetryPolicies: []azcore.Policy{
+			policy.NewRequestLoggingPolicy("AzureRM"),
 		},
 	})
 }

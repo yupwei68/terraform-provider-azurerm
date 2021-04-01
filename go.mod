@@ -2,7 +2,7 @@ module github.com/terraform-providers/terraform-provider-azurerm
 
 require (
 	github.com/Azure/azure-sdk-for-go v52.5.0+incompatible
-	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/armcore v0.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.2
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/date v0.3.0
