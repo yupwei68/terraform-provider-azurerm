@@ -10,7 +10,7 @@ import (
 type Client struct {
 	AvailabilitySetsClient          *armcompute.AvailabilitySetsClient
 	DedicatedHostsClient            *armcompute.DedicatedHostsClient
-	DedicatedHostGroupsClient       *compute.DedicatedHostGroupsClient
+	DedicatedHostGroupsClient       *armcompute.DedicatedHostGroupsClient
 	DisksClient                     *compute.DisksClient
 	DiskAccessClient                *compute.DiskAccessesClient
 	DiskEncryptionSetsClient        *compute.DiskEncryptionSetsClient
@@ -34,9 +34,6 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) *Client {
-	dedicatedHostGroupsClient := compute.NewDedicatedHostGroupsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&dedicatedHostGroupsClient.Client, o.ResourceManagerAuthorizer)
-
 	disksClient := compute.NewDisksClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&disksClient.Client, o.ResourceManagerAuthorizer)
 
@@ -100,7 +97,7 @@ func NewClient(o *common.ClientOptions) *Client {
 	return &Client{
 		AvailabilitySetsClient:          armcompute.NewAvailabilitySetsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DedicatedHostsClient:            armcompute.NewDedicatedHostsClient(o.ResourceManagerConnection, o.SubscriptionId),
-		DedicatedHostGroupsClient:       &dedicatedHostGroupsClient,
+		DedicatedHostGroupsClient:       armcompute.NewDedicatedHostGroupsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DisksClient:                     &disksClient,
 		DiskAccessClient:                &diskAccessClient,
 		DiskEncryptionSetsClient:        &diskEncryptionSetsClient,
