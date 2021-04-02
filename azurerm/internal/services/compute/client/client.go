@@ -12,7 +12,7 @@ type Client struct {
 	DedicatedHostsClient            *armcompute.DedicatedHostsClient
 	DedicatedHostGroupsClient       *armcompute.DedicatedHostGroupsClient
 	DisksClient                     *armcompute.DisksClient
-	DiskAccessClient                *compute.DiskAccessesClient
+	DiskAccessClient                *armcompute.DiskAccessesClient
 	DiskEncryptionSetsClient        *compute.DiskEncryptionSetsClient
 	GalleriesClient                 *compute.GalleriesClient
 	GalleryImagesClient             *compute.GalleryImagesClient
@@ -34,9 +34,6 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) *Client {
-	diskAccessClient := compute.NewDiskAccessesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&diskAccessClient.Client, o.ResourceManagerAuthorizer)
-
 	diskEncryptionSetsClient := compute.NewDiskEncryptionSetsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&diskEncryptionSetsClient.Client, o.ResourceManagerAuthorizer)
 
@@ -90,7 +87,7 @@ func NewClient(o *common.ClientOptions) *Client {
 		DedicatedHostsClient:            armcompute.NewDedicatedHostsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DedicatedHostGroupsClient:       armcompute.NewDedicatedHostGroupsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DisksClient:                     armcompute.NewDisksClient(o.ResourceManagerConnection, o.SubscriptionId),
-		DiskAccessClient:                &diskAccessClient,
+		DiskAccessClient:                armcompute.NewDiskAccessesClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DiskEncryptionSetsClient:        &diskEncryptionSetsClient,
 		GalleriesClient:                 &galleriesClient,
 		GalleryImagesClient:             &galleryImagesClient,
