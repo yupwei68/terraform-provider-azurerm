@@ -23,6 +23,9 @@ func TestAccStreamanalyticsCluster_basic(t *testing.T) {
 			Config: r.basic(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -51,6 +54,9 @@ func TestAccStreamanalyticsCluster_complete(t *testing.T) {
 			Config: r.complete(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -65,6 +71,9 @@ func TestAccStreamanalyticsCluster_update(t *testing.T) {
 			Config: r.basic(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -72,6 +81,19 @@ func TestAccStreamanalyticsCluster_update(t *testing.T) {
 			Config: r.complete(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.update(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -79,27 +101,9 @@ func TestAccStreamanalyticsCluster_update(t *testing.T) {
 			Config: r.basic(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		data.ImportStep(),
-	})
-}
-
-func TestAccStreamanalyticsCluster_updateSku(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_stream_analytics_cluster", "test")
-	r := StreamanalyticsClusterResource{}
-	data.ResourceTest(t, r, []resource.TestStep{
-		{
-			Config: r.complete(data),
-			Check: resource.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		data.ImportStep(),
-		{
-			Config: r.updateSku(data),
-			Check: resource.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("capacity_allocated").Exists(),
+				check.That(data.ResourceName).Key("capacity_assigned").Exists(),
+				check.That(data.ResourceName).Key("cluster_id").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -160,6 +164,10 @@ resource "azurerm_stream_analytics_cluster" "import" {
   name                = azurerm_stream_analytics_cluster.test.name
   resource_group_name = azurerm_stream_analytics_cluster.test.resource_group_name
   location            = azurerm_stream_analytics_cluster.test.location
+  sku {
+    name     = azurerm_stream_analytics_cluster.test.sku.0.name
+    capacity = azurerm_stream_analytics_cluster.test.sku.0.capacity
+  }
 }
 `, config)
 }
@@ -185,7 +193,7 @@ resource "azurerm_stream_analytics_cluster" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r StreamanalyticsClusterResource) updateSku(data acceptance.TestData) string {
+func (r StreamanalyticsClusterResource) update(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -196,11 +204,11 @@ resource "azurerm_stream_analytics_cluster" "test" {
   location            = azurerm_resource_group.test.location
   sku {
     name     = "Default"
-    capacity = 48
+    capacity = 72
   }
 
   tags = {
-    ENV = "Test"
+    DEV = "Stage"
   }
 }
 `, template, data.RandomInteger)
