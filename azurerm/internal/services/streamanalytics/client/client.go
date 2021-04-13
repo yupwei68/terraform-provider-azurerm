@@ -6,6 +6,7 @@ import (
 )
 
 type Client struct {
+	ClustersClient        *streamanalytics.ClustersClient
 	FunctionsClient       *streamanalytics.FunctionsClient
 	JobsClient            *streamanalytics.StreamingJobsClient
 	InputsClient          *streamanalytics.InputsClient
@@ -14,6 +15,9 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) *Client {
+	clustersClient := streamanalytics.NewClustersClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&clustersClient.Client, o.ResourceManagerAuthorizer)
+
 	functionsClient := streamanalytics.NewFunctionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&functionsClient.Client, o.ResourceManagerAuthorizer)
 
@@ -30,6 +34,7 @@ func NewClient(o *common.ClientOptions) *Client {
 	o.ConfigureClient(&transformationsClient.Client, o.ResourceManagerAuthorizer)
 
 	return &Client{
+		ClustersClient:        &clustersClient,
 		FunctionsClient:       &functionsClient,
 		JobsClient:            &jobsClient,
 		InputsClient:          &inputsClient,
