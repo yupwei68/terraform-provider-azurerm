@@ -93,8 +93,8 @@ func resourceDedicatedHostGroupCreate(d *schema.ResourceData, meta interface{}) 
 	parameters := armcompute.DedicatedHostGroup{
 		Resource: armcompute.Resource{
 			Location: utils.String(location),
-			Tags: tags.Track2Expand(t),
-		}, 
+			Tags:     tags.Track2Expand(t),
+		},
 		Properties: &armcompute.DedicatedHostGroupProperties{
 			PlatformFaultDomainCount: utils.Int32(int32(platformFaultDomainCount)),
 		},

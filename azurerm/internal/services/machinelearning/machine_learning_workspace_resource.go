@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2020-04-01/machinelearningservices"
 	"github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/mgmt/2020-11-01-preview/containerregistry"
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -349,7 +349,7 @@ func resourceMachineLearningWorkspaceDelete(d *schema.ResourceData, meta interfa
 	return nil
 }
 
-func validateStorageAccount(ctx context.Context, client *storage.AccountsClient, accountID string) error {
+func validateStorageAccount(ctx context.Context, client *armstorage.StorageAccountsClient, accountID string) error {
 	if accountID == "" {
 		return fmt.Errorf("Error validating Storage Account: Empty ID")
 	}
@@ -361,12 +361,12 @@ func validateStorageAccount(ctx context.Context, client *storage.AccountsClient,
 		return fmt.Errorf("Error validating Storage Account: %+v", err)
 	}
 
-	account, err := client.GetProperties(ctx, id.ResourceGroup, id.Name, "")
+	account, err := client.GetProperties(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return fmt.Errorf("Error validating Storage Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
-	if sku := account.Sku; sku != nil {
-		if sku.Tier == storage.Premium {
+	if sku := account.StorageAccount.SKU; sku != nil {
+		if *sku.Tier == armstorage.SKUTierPremium {
 			return fmt.Errorf("Error validating Storage Account %q (Resource Group %q): The associated Storage Account must not be Premium", id.Name, id.ResourceGroup)
 		}
 	}

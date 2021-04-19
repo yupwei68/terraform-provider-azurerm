@@ -1,15 +1,12 @@
 package containers
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"strings"
-	"time"
-
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
+	"log"
+	"strings"
 )
 
 func ResourceContainerRegistryMigrateState(
@@ -94,16 +91,14 @@ func updateV1ToV2StorageAccountName(is *terraform.InstanceState, meta interface{
 }
 
 func findAzureStorageAccountIdFromName(name string, meta interface{}) (string, error) {
-	ctx, cancel := context.WithTimeout(meta.(*clients.Client).StopContext, time.Minute*5)
-	defer cancel()
 
 	client := meta.(*clients.Client).Storage.AccountsClient
-	accounts, err := client.List(ctx)
-	if err != nil {
-		return "", err
+	accounts := client.List(nil)
+	if accounts.Err() != nil {
+		return "", accounts.Err()
 	}
 
-	for _, account := range accounts.Values() {
+	for _, account := range *accounts.PageResponse().StorageAccountListResult.Value {
 		if strings.EqualFold(*account.Name, name) {
 			return *account.ID, nil
 		}

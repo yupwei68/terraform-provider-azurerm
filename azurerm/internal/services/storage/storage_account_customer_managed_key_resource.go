@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
@@ -83,11 +83,11 @@ func resourceStorageAccountCustomerManagedKeyCreateUpdate(d *schema.ResourceData
 	locks.ByName(storageAccountID.Name, storageAccountResourceName)
 	defer locks.UnlockByName(storageAccountID.Name, storageAccountResourceName)
 
-	storageAccount, err := storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, "")
+	storageAccount, err := storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, nil)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): %+v", storageAccountID.Name, storageAccountID.ResourceGroup, err)
 	}
-	if storageAccount.AccountProperties == nil {
+	if storageAccount.StorageAccount.Properties == nil {
 		return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): `properties` was nil", storageAccountID.Name, storageAccountID.ResourceGroup)
 	}
 
@@ -97,8 +97,8 @@ func resourceStorageAccountCustomerManagedKeyCreateUpdate(d *schema.ResourceData
 	if d.IsNewResource() {
 		// whilst this looks superflurious given encryption is enabled by default, due to the way
 		// the Azure API works this technically can be nil
-		if storageAccount.AccountProperties.Encryption != nil {
-			if storageAccount.AccountProperties.Encryption.KeySource == storage.KeySourceMicrosoftKeyvault {
+		if storageAccount.StorageAccount.Properties.Encryption != nil {
+			if *storageAccount.StorageAccount.Properties.Encryption.KeySource == armstorage.KeySourceMicrosoftKeyvault {
 				return tf.ImportAsExistsError("azurerm_storage_account_customer_managed_key", resourceID)
 			}
 		}
@@ -136,19 +136,21 @@ func resourceStorageAccountCustomerManagedKeyCreateUpdate(d *schema.ResourceData
 	keyName := d.Get("key_name").(string)
 	keyVersion := d.Get("key_version").(string)
 
-	props := storage.AccountUpdateParameters{
-		AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-			Encryption: &storage.Encryption{
-				Services: &storage.EncryptionServices{
-					Blob: &storage.EncryptionService{
+	keySource := armstorage.KeySourceMicrosoftKeyvault
+
+	props := armstorage.StorageAccountUpdateParameters{
+		Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+			Encryption: &armstorage.Encryption{
+				Services: &armstorage.EncryptionServices{
+					Blob: &armstorage.EncryptionService{
 						Enabled: utils.Bool(true),
 					},
-					File: &storage.EncryptionService{
+					File: &armstorage.EncryptionService{
 						Enabled: utils.Bool(true),
 					},
 				},
-				KeySource: storage.KeySourceMicrosoftKeyvault,
-				KeyVaultProperties: &storage.KeyVaultProperties{
+				KeySource: &keySource,
+				KeyVaultProperties: &armstorage.KeyVaultProperties{
 					KeyName:     utils.String(keyName),
 					KeyVersion:  utils.String(keyVersion),
 					KeyVaultURI: utils.String(*keyVaultBaseURL),
@@ -157,7 +159,7 @@ func resourceStorageAccountCustomerManagedKeyCreateUpdate(d *schema.ResourceData
 		},
 	}
 
-	if _, err = storageClient.Update(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, props); err != nil {
+	if _, err = storageClient.Update(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, props, nil); err != nil {
 		return fmt.Errorf("Error updating Customer Managed Key for Storage Account %q (Resource Group %q): %+v", storageAccountID.Name, storageAccountID.ResourceGroup, err)
 	}
 
@@ -177,9 +179,9 @@ func resourceStorageAccountCustomerManagedKeyRead(d *schema.ResourceData, meta i
 		return err
 	}
 
-	storageAccount, err := storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, "")
+	storageAccount, err := storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[DEBUG] Storage Account %q could not be found in Resource Group %q - removing from state!", storageAccountID.Name, storageAccountID.ResourceGroup)
 			d.SetId("")
 			return nil
@@ -187,16 +189,16 @@ func resourceStorageAccountCustomerManagedKeyRead(d *schema.ResourceData, meta i
 
 		return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): %+v", storageAccountID.Name, storageAccountID.ResourceGroup, err)
 	}
-	if storageAccount.AccountProperties == nil {
+	if storageAccount.StorageAccount.Properties == nil {
 		return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): `properties` was nil", storageAccountID.Name, storageAccountID.ResourceGroup)
 	}
-	if storageAccount.AccountProperties.Encryption == nil || storageAccount.AccountProperties.Encryption.KeySource != storage.KeySourceMicrosoftKeyvault {
+	if storageAccount.StorageAccount.Properties.Encryption == nil || *storageAccount.StorageAccount.Properties.Encryption.KeySource != armstorage.KeySourceMicrosoftKeyvault {
 		log.Printf("[DEBUG] Customer Managed Key was not defined for Storage Account %q (Resource Group %q) - removing from state!", storageAccountID.Name, storageAccountID.ResourceGroup)
 		d.SetId("")
 		return nil
 	}
 
-	encryption := *storageAccount.AccountProperties.Encryption
+	encryption := *storageAccount.StorageAccount.Properties.Encryption
 
 	keyName := ""
 	keyVaultURI := ""
@@ -246,9 +248,9 @@ func resourceStorageAccountCustomerManagedKeyDelete(d *schema.ResourceData, meta
 	defer locks.UnlockByName(storageAccountID.Name, storageAccountResourceName)
 
 	// confirm it still exists prior to trying to update it, else we'll get an error
-	storageAccount, err := storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, "")
+	_, err = storageClient.GetProperties(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return nil
 		}
 
@@ -259,23 +261,24 @@ func resourceStorageAccountCustomerManagedKeyDelete(d *schema.ResourceData, meta
 	// "Delete" doesn't really make sense it should really be a "Revert to Default"
 	// So instead of the Delete func actually deleting the Storage Account I am
 	// making it reset the Storage Account to its default state
-	props := storage.AccountUpdateParameters{
-		AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-			Encryption: &storage.Encryption{
-				Services: &storage.EncryptionServices{
-					Blob: &storage.EncryptionService{
+	keySourceStorage := armstorage.KeySourceMicrosoftStorage
+	props := armstorage.StorageAccountUpdateParameters{
+		Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+			Encryption: &armstorage.Encryption{
+				Services: &armstorage.EncryptionServices{
+					Blob: &armstorage.EncryptionService{
 						Enabled: utils.Bool(true),
 					},
-					File: &storage.EncryptionService{
+					File: &armstorage.EncryptionService{
 						Enabled: utils.Bool(true),
 					},
 				},
-				KeySource: storage.KeySourceMicrosoftStorage,
+				KeySource: &keySourceStorage,
 			},
 		},
 	}
 
-	if _, err = storageClient.Update(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, props); err != nil {
+	if _, err = storageClient.Update(ctx, storageAccountID.ResourceGroup, storageAccountID.Name, props, nil); err != nil {
 		return fmt.Errorf("Error removing Customer Managed Key for Storage Account %q (Resource Group %q): %+v", storageAccountID.Name, storageAccountID.ResourceGroup, err)
 	}
 

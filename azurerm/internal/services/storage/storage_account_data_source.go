@@ -2,11 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
 	azautorest "github.com/Azure/go-autorest/autorest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -14,6 +9,9 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
+	"net/http"
+	"strings"
+	"time"
 )
 
 func dataSourceStorageAccount() *schema.Resource {
@@ -268,15 +266,15 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 	name := d.Get("name").(string)
 	resourceGroup := d.Get("resource_group_name").(string)
 
-	resp, err := client.GetProperties(ctx, resourceGroup, name, "")
+	resp, err := client.GetProperties(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Storage Account %q (Resource Group %q) was not found", name, resourceGroup)
 		}
 		return fmt.Errorf("Error reading the state of AzureRM Storage Account %q: %+v", name, err)
 	}
 
-	d.SetId(*resp.ID)
+	d.SetId(*resp.StorageAccount.ID)
 
 	// handle the user not having permissions to list the keys
 	d.Set("primary_connection_string", "")
@@ -286,7 +284,7 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("primary_access_key", "")
 	d.Set("secondary_access_key", "")
 
-	keys, err := client.ListKeys(ctx, resourceGroup, name, storage.Kerb)
+	keys, err := client.ListKeys(ctx, resourceGroup, name, nil)
 	if err != nil {
 		// the API returns a 200 with an inner error of a 409..
 		var hasWriteLock bool
@@ -303,21 +301,21 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		}
 	}
 
-	accountKeys := keys.Keys
-	if location := resp.Location; location != nil {
+	accountKeys := keys.StorageAccountListKeysResult.Keys
+	if location := resp.StorageAccount.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	d.Set("account_kind", resp.Kind)
+	d.Set("account_kind", resp.StorageAccount.Kind)
 
-	if sku := resp.Sku; sku != nil {
+	if sku := resp.StorageAccount.SKU; sku != nil {
 		d.Set("account_tier", sku.Tier)
-		d.Set("account_replication_type", strings.Split(string(sku.Name), "_")[1])
+		d.Set("account_replication_type", strings.Split(string(*sku.Name), "_")[1])
 	}
 
-	if props := resp.AccountProperties; props != nil {
+	if props := resp.StorageAccount.Properties; props != nil {
 		d.Set("access_tier", props.AccessTier)
-		d.Set("enable_https_traffic_only", props.EnableHTTPSTrafficOnly)
-		d.Set("min_tls_version", string(props.MinimumTLSVersion))
+		d.Set("enable_https_traffic_only", props.EnableHTTPsTrafficOnly)
+		d.Set("min_tls_version", string(*props.MinimumTLSVersion))
 		d.Set("is_hns_enabled", props.IsHnsEnabled)
 		d.Set("allow_blob_public_access", props.AllowBlobPublicAccess)
 
@@ -334,12 +332,12 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		if accessKeys := accountKeys; accessKeys != nil {
 			storageAccessKeys := *accessKeys
 			if len(storageAccessKeys) > 0 {
-				pcs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.Name, *storageAccessKeys[0].Value, endpointSuffix)
+				pcs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.StorageAccount.Name, *storageAccessKeys[0].Value, endpointSuffix)
 				d.Set("primary_connection_string", pcs)
 			}
 
 			if len(storageAccessKeys) > 1 {
-				scs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.Name, *storageAccessKeys[1].Value, endpointSuffix)
+				scs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.StorageAccount.Name, *storageAccessKeys[1].Value, endpointSuffix)
 				d.Set("secondary_connection_string", scs)
 			}
 		}
@@ -351,7 +349,7 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		if accessKeys := accountKeys; accessKeys != nil {
 			var primaryBlobConnectStr string
 			if v := props.PrimaryEndpoints; v != nil {
-				primaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.Name, (*accessKeys)[0].Value)
+				primaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.StorageAccount.Name, (*accessKeys)[0].Value)
 			}
 			d.Set("primary_blob_connection_string", primaryBlobConnectStr)
 		}
@@ -363,7 +361,7 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		if accessKeys := accountKeys; accessKeys != nil {
 			var secondaryBlobConnectStr string
 			if v := props.SecondaryEndpoints; v != nil {
-				secondaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.Name, (*accessKeys)[1].Value)
+				secondaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.StorageAccount.Name, (*accessKeys)[1].Value)
 			}
 			d.Set("secondary_blob_connection_string", secondaryBlobConnectStr)
 		}
@@ -375,5 +373,5 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		d.Set("secondary_access_key", storageAccountKeys[1].Value)
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSetString(d, resp.StorageAccount.Tags)
 }

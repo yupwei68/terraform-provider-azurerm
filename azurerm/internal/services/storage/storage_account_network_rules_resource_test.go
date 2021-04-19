@@ -85,9 +85,9 @@ func (r StorageAccountNetworkRulesResource) Exists(ctx context.Context, client *
 	storageAccountName := state.Attributes["storage_account_name"]
 	resourceGroup := state.Attributes["resource_group_name"]
 
-	resp, err := client.Storage.AccountsClient.GetProperties(ctx, resourceGroup, storageAccountName, "")
+	_, err := client.Storage.AccountsClient.GetProperties(ctx, resourceGroup, storageAccountName, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return utils.Bool(false), nil
 		}
 		return nil, fmt.Errorf("retrieving Storage Account %q (Resource Group %q): %+v", storageAccountName, resourceGroup, err)

@@ -117,14 +117,14 @@ func dataSourceStorageManagementPolicyRead(d *schema.ResourceData, meta interfac
 	resourceGroupName := rid.ResourceGroup
 	storageAccountName := rid.Path["storageAccounts"]
 
-	result, err := client.Get(ctx, resourceGroupName, storageAccountName)
+	result, err := client.Get(ctx, resourceGroupName, storageAccountName, "default", nil)
 	if err != nil {
 		return err
 	}
-	d.SetId(*result.ID)
+	d.SetId(*result.ManagementPolicy.ID)
 
-	if result.Policy != nil {
-		policy := result.Policy
+	if result.ManagementPolicy.Properties.Policy != nil {
+		policy := result.ManagementPolicy.Properties.Policy
 		if policy.Rules != nil {
 			if err := d.Set("rule", flattenStorageManagementPolicyRules(policy.Rules)); err != nil {
 				return fmt.Errorf("Error flattening `rule`: %+v", err)

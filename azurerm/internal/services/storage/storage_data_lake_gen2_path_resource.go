@@ -152,9 +152,9 @@ func resourceStorageDataLakeGen2PathCreate(d *schema.ResourceData, meta interfac
 	}
 
 	// confirm the storage account exists, otherwise Data Plane API requests will fail
-	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, "")
+	_, err = accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q was not found in Resource Group %q!", storageID.Name, storageID.ResourceGroup)
 		}
 
@@ -265,9 +265,9 @@ func resourceStorageDataLakeGen2PathUpdate(d *schema.ResourceData, meta interfac
 	}
 
 	// confirm the storage account exists, otherwise Data Plane API requests will fail
-	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, "")
+	_, err = accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q was not found in Resource Group %q!", storageID.Name, storageID.ResourceGroup)
 		}
 

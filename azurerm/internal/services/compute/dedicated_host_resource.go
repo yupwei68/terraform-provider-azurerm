@@ -154,7 +154,7 @@ func resourceDedicatedHostCreate(d *schema.ResourceData, meta interface{}) error
 	parameters := armcompute.DedicatedHost{
 		Resource: armcompute.Resource{
 			Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
-			Tags: tags.Track2Expand(d.Get("tags").(map[string]interface{})),
+			Tags:     tags.Track2Expand(d.Get("tags").(map[string]interface{})),
 		},
 		Properties: &armcompute.DedicatedHostProperties{
 			AutoReplaceOnFailure: utils.Bool(d.Get("auto_replace_on_failure").(bool)),

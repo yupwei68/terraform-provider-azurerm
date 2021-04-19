@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
@@ -57,8 +57,8 @@ func resourceStorageEncryptionScope() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(storage.MicrosoftKeyVault),
-					string(storage.MicrosoftStorage),
+					string(armstorage.EncryptionScopeSourceMicrosoftKeyVault),
+					string(armstorage.EncryptionScopeSourceMicrosoftStorage),
 				}, false),
 			},
 
@@ -83,32 +83,35 @@ func resourceStorageEncryptionScopeCreate(d *schema.ResourceData, meta interface
 	}
 
 	resourceId := parse.NewEncryptionScopeID(accountId.SubscriptionId, accountId.ResourceGroup, accountId.Name, name).ID()
-	existing, err := client.Get(ctx, accountId.ResourceGroup, accountId.Name, name)
+	existing, err := client.Get(ctx, accountId.ResourceGroup, accountId.Name, name, nil)
 	if err != nil {
-		if !utils.ResponseWasNotFound(existing.Response) {
+		if !utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("checking for present of existing Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", name, accountId.Name, accountId.ResourceGroup, err)
 		}
 	}
-	if existing.EncryptionScopeProperties != nil && strings.EqualFold(string(existing.EncryptionScopeProperties.State), string(storage.Enabled)) {
+	if existing.EncryptionScope.EncryptionScopeProperties != nil && *existing.EncryptionScope.EncryptionScopeProperties.State == armstorage.EncryptionScopeStateEnabled {
 		return tf.ImportAsExistsError("azurerm_storage_encryption_scope", resourceId)
 	}
 
-	if d.Get("source").(string) == string(storage.MicrosoftKeyVault) {
+	if d.Get("source").(string) == string(armstorage.KeySourceMicrosoftKeyvault) {
 		if _, ok := d.GetOk("key_vault_key_id"); !ok {
-			return fmt.Errorf("`key_vault_key_id` is required when source is `%s`", string(storage.KeySourceMicrosoftKeyvault))
+			return fmt.Errorf("`key_vault_key_id` is required when source is `%s`", string(armstorage.KeySourceMicrosoftKeyvault))
 		}
 	}
 
-	props := storage.EncryptionScope{
-		EncryptionScopeProperties: &storage.EncryptionScopeProperties{
-			Source: storage.EncryptionScopeSource(d.Get("source").(string)),
-			State:  storage.Enabled,
-			KeyVaultProperties: &storage.EncryptionScopeKeyVaultProperties{
+	esSource := armstorage.EncryptionScopeSource(d.Get("source").(string))
+	enable := armstorage.EncryptionScopeStateEnabled
+
+	props := armstorage.EncryptionScope{
+		EncryptionScopeProperties: &armstorage.EncryptionScopeProperties{
+			Source: &esSource,
+			State:  &enable,
+			KeyVaultProperties: &armstorage.EncryptionScopeKeyVaultProperties{
 				KeyURI: utils.String(d.Get("key_vault_key_id").(string)),
 			},
 		},
 	}
-	if _, err := client.Put(ctx, accountId.ResourceGroup, accountId.Name, name, props); err != nil {
+	if _, err := client.Put(ctx, accountId.ResourceGroup, accountId.Name, name, props, nil); err != nil {
 		return fmt.Errorf("creating Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", name, accountId.Name, accountId.ResourceGroup, err)
 	}
 
@@ -126,22 +129,25 @@ func resourceStorageEncryptionScopeUpdate(d *schema.ResourceData, meta interface
 		return err
 	}
 
-	if d.Get("source").(string) == string(storage.MicrosoftKeyVault) {
+	if d.Get("source").(string) == string(armstorage.KeySourceMicrosoftKeyvault) {
 		if _, ok := d.GetOk("key_vault_key_id"); !ok {
-			return fmt.Errorf("`key_vault_key_id` is required when source is `%s`", string(storage.KeySourceMicrosoftKeyvault))
+			return fmt.Errorf("`key_vault_key_id` is required when source is `%s`", string(armstorage.KeySourceMicrosoftKeyvault))
 		}
 	}
 
-	props := storage.EncryptionScope{
-		EncryptionScopeProperties: &storage.EncryptionScopeProperties{
-			Source: storage.EncryptionScopeSource(d.Get("source").(string)),
-			State:  storage.Enabled,
-			KeyVaultProperties: &storage.EncryptionScopeKeyVaultProperties{
+	esSource := armstorage.EncryptionScopeSource(d.Get("source").(string))
+	enable := armstorage.EncryptionScopeStateEnabled
+
+	props := armstorage.EncryptionScope{
+		EncryptionScopeProperties: &armstorage.EncryptionScopeProperties{
+			Source: &esSource,
+			State:  &enable,
+			KeyVaultProperties: &armstorage.EncryptionScopeKeyVaultProperties{
 				KeyURI: utils.String(d.Get("key_vault_key_id").(string)),
 			},
 		},
 	}
-	if _, err := client.Patch(ctx, id.ResourceGroup, id.StorageAccountName, id.Name, props); err != nil {
+	if _, err := client.Patch(ctx, id.ResourceGroup, id.StorageAccountName, id.Name, props, nil); err != nil {
 		return fmt.Errorf("updating Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", id.Name, id.StorageAccountName, id.ResourceGroup, err)
 	}
 
@@ -159,9 +165,9 @@ func resourceStorageEncryptionScopeRead(d *schema.ResourceData, meta interface{}
 	}
 	accountId := parse.NewStorageAccountID(id.SubscriptionId, id.ResourceGroup, id.StorageAccountName)
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.StorageAccountName, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.StorageAccountName, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[INFO] Storage Encryption Scope %q does not exist - removing from state", d.Id())
 			d.SetId("")
 			return nil
@@ -170,21 +176,21 @@ func resourceStorageEncryptionScopeRead(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("retrieving Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", id.Name, id.StorageAccountName, id.ResourceGroup, err)
 	}
 
-	if resp.EncryptionScopeProperties == nil {
+	if resp.EncryptionScope.EncryptionScopeProperties == nil {
 		return fmt.Errorf("retrieving Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): `properties` was nil", id.Name, id.StorageAccountName, id.ResourceGroup)
 	}
 
-	props := *resp.EncryptionScopeProperties
-	if strings.EqualFold(string(props.State), string(storage.Disabled)) {
+	props := *resp.EncryptionScope.EncryptionScopeProperties
+	if *props.State == armstorage.EncryptionScopeStateDisabled {
 		log.Printf("[INFO] Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q) does not exist - removing from state", id.Name, id.StorageAccountName, id.ResourceGroup)
 		d.SetId("")
 		return nil
 	}
 
-	d.Set("name", resp.Name)
+	d.Set("name", resp.EncryptionScope.Name)
 	d.Set("storage_account_id", accountId.ID())
-	if props := resp.EncryptionScopeProperties; props != nil {
-		d.Set("source", flattenEncryptionScopeSource(props.Source))
+	if props := resp.EncryptionScope.EncryptionScopeProperties; props != nil {
+		d.Set("source", flattenEncryptionScopeSource(*props.Source))
 		var keyId string
 		if kv := props.KeyVaultProperties; kv != nil {
 			if kv.KeyURI != nil {
@@ -207,25 +213,27 @@ func resourceStorageEncryptionScopeDelete(d *schema.ResourceData, meta interface
 		return err
 	}
 
-	props := storage.EncryptionScope{
-		EncryptionScopeProperties: &storage.EncryptionScopeProperties{
-			State: storage.Disabled,
+	disable := armstorage.EncryptionScopeStateDisabled
+
+	props := armstorage.EncryptionScope{
+		EncryptionScopeProperties: &armstorage.EncryptionScopeProperties{
+			State: &disable,
 		},
 	}
 
-	if _, err = client.Put(ctx, id.ResourceGroup, id.StorageAccountName, id.Name, props); err != nil {
+	if _, err = client.Put(ctx, id.ResourceGroup, id.StorageAccountName, id.Name, props, nil); err != nil {
 		return fmt.Errorf("disabling Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", id.Name, id.StorageAccountName, id.ResourceGroup, err)
 	}
 
 	return nil
 }
 
-func flattenEncryptionScopeSource(input storage.EncryptionScopeSource) string {
+func flattenEncryptionScopeSource(input armstorage.EncryptionScopeSource) string {
 	// TODO: file a bug
 	// the Storage API differs from every other API in Azure in that these Enum's can be returned case-insensitively
-	if strings.EqualFold(string(input), string(storage.MicrosoftKeyVault)) {
-		return string(storage.MicrosoftKeyVault)
+	if strings.EqualFold(string(input), string(armstorage.EncryptionScopeSourceMicrosoftKeyVault)) {
+		return string(armstorage.EncryptionScopeSourceMicrosoftKeyVault)
 	}
 
-	return string(storage.MicrosoftStorage)
+	return string(armstorage.EncryptionScopeSourceMicrosoftKeyVault)
 }

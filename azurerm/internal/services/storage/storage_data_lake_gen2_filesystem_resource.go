@@ -130,18 +130,18 @@ func resourceStorageDataLakeGen2FileSystemCreate(d *schema.ResourceData, meta in
 	}
 
 	// confirm the storage account exists, otherwise Data Plane API requests will fail
-	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, "")
+	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q was not found in Resource Group %q!", storageID.Name, storageID.ResourceGroup)
 		}
 
 		return fmt.Errorf("Error checking for existence of Storage Account %q (Resource Group %q): %+v", storageID.Name, storageID.ResourceGroup, err)
 	}
 
-	if acl != nil && (storageAccount.AccountProperties == nil ||
-		storageAccount.AccountProperties.IsHnsEnabled == nil ||
-		!*storageAccount.AccountProperties.IsHnsEnabled) {
+	if acl != nil && (storageAccount.StorageAccount.Properties == nil ||
+		storageAccount.StorageAccount.Properties.IsHnsEnabled == nil ||
+		!*storageAccount.StorageAccount.Properties.IsHnsEnabled) {
 		return fmt.Errorf("ACL is enabled only when the Hierarchical Namespace (HNS) feature is turned ON")
 	}
 
@@ -213,18 +213,18 @@ func resourceStorageDataLakeGen2FileSystemUpdate(d *schema.ResourceData, meta in
 	}
 
 	// confirm the storage account exists, otherwise Data Plane API requests will fail
-	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, "")
+	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q was not found in Resource Group %q!", storageID.Name, storageID.ResourceGroup)
 		}
 
 		return fmt.Errorf("Error checking for existence of Storage Account %q (Resource Group %q): %+v", storageID.Name, storageID.ResourceGroup, err)
 	}
 
-	if acl != nil && (storageAccount.AccountProperties == nil ||
-		storageAccount.AccountProperties.IsHnsEnabled == nil ||
-		!*storageAccount.AccountProperties.IsHnsEnabled) {
+	if acl != nil && (storageAccount.StorageAccount.Properties == nil ||
+		storageAccount.StorageAccount.Properties.IsHnsEnabled == nil ||
+		!*storageAccount.StorageAccount.Properties.IsHnsEnabled) {
 		return fmt.Errorf("ACL is enabled only when the Hierarchical Namespace (HNS) feature is turned ON")
 	}
 
@@ -275,9 +275,9 @@ func resourceStorageDataLakeGen2FileSystemRead(d *schema.ResourceData, meta inte
 	}
 
 	// confirm the storage account exists, otherwise Data Plane API requests will fail
-	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, "")
+	storageAccount, err := accountsClient.GetProperties(ctx, storageID.ResourceGroup, storageID.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[INFO] Storage Account %q does not exist removing from state...", id.AccountName)
 			d.SetId("")
 			return nil
@@ -306,8 +306,8 @@ func resourceStorageDataLakeGen2FileSystemRead(d *schema.ResourceData, meta inte
 
 	var ace []interface{}
 	// acl is only enabled when `IsHnsEnabled` is true otherwise the rest api will report error
-	if storageAccount.AccountProperties != nil && storageAccount.AccountProperties.IsHnsEnabled != nil &&
-		*storageAccount.AccountProperties.IsHnsEnabled {
+	if storageAccount.StorageAccount.Properties != nil && storageAccount.StorageAccount.Properties.IsHnsEnabled != nil &&
+		*storageAccount.StorageAccount.Properties.IsHnsEnabled {
 		// The above `getStatus` API request doesn't return the ACLs
 		// Have to make a `getAccessControl` request, but that doesn't return all fields either!
 		pathResponse, err := pathClient.GetProperties(ctx, id.AccountName, id.DirectoryName, "/", paths.GetPropertiesActionGetAccessControl)

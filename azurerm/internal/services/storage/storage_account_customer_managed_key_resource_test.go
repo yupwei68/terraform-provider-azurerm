@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
@@ -106,16 +106,16 @@ func (r StorageAccountCustomerManagedKeyResource) accountHasDefaultSettings(ctx 
 		return err
 	}
 
-	resp, err := client.Storage.AccountsClient.GetProperties(ctx, accountId.ResourceGroup, accountId.Name, "")
+	resp, err := client.Storage.AccountsClient.GetProperties(ctx, accountId.ResourceGroup, accountId.Name, nil)
 	if err != nil {
 		return fmt.Errorf("Bad: Get on storageServiceClient: %+v", err)
 	}
 
-	if utils.ResponseWasNotFound(resp.Response) {
+	if utils.Track2ResponseWasNotFound(err) {
 		return fmt.Errorf("Bad: StorageAccount %q (resource group: %q) does not exist", accountId.Name, accountId.ResourceGroup)
 	}
 
-	if props := resp.AccountProperties; props != nil {
+	if props := resp.StorageAccount.Properties; props != nil {
 		if encryption := props.Encryption; encryption != nil {
 			if services := encryption.Services; services != nil {
 				if !*services.Blob.Enabled {
@@ -126,8 +126,8 @@ func (r StorageAccountCustomerManagedKeyResource) accountHasDefaultSettings(ctx 
 				}
 			}
 
-			if encryption.KeySource != storage.KeySourceMicrosoftStorage {
-				return fmt.Errorf("%q should be %q", encryption.KeySource, string(storage.KeySourceMicrosoftStorage))
+			if *encryption.KeySource != armstorage.KeySourceMicrosoftStorage {
+				return fmt.Errorf("%q should be %q", *encryption.KeySource, string(armstorage.KeySourceMicrosoftStorage))
 			}
 		} else {
 			return fmt.Errorf("storage account encryption properties not found")
@@ -143,25 +143,25 @@ func (r StorageAccountCustomerManagedKeyResource) Exists(ctx context.Context, cl
 		return nil, err
 	}
 
-	resp, err := client.Storage.AccountsClient.GetProperties(ctx, accountId.ResourceGroup, accountId.Name, "")
+	resp, err := client.Storage.AccountsClient.GetProperties(ctx, accountId.ResourceGroup, accountId.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Bad: Get on storageServiceClient: %+v", err)
 	}
 
-	if utils.ResponseWasNotFound(resp.Response) {
+	if utils.Track2ResponseWasNotFound(err) {
 		return utils.Bool(false), nil
 	}
 
-	if resp.AccountProperties == nil {
+	if resp.StorageAccount.Properties == nil {
 		return nil, fmt.Errorf("storage account encryption properties not found")
 	}
-	props := *resp.AccountProperties
+	props := *resp.StorageAccount.Properties
 	if encryption := props.Encryption; encryption != nil {
-		if encryption.KeySource == storage.KeySourceMicrosoftKeyvault {
+		if *encryption.KeySource == armstorage.KeySourceMicrosoftKeyvault {
 			return utils.Bool(true), nil
 		}
 
-		return nil, fmt.Errorf("%q should be %q", encryption.KeySource, string(storage.KeySourceMicrosoftKeyvault))
+		return nil, fmt.Errorf("%q should be %q", *encryption.KeySource, string(armstorage.KeySourceMicrosoftKeyvault))
 	}
 
 	return utils.Bool(false), nil

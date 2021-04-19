@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -296,9 +297,9 @@ func (r StorageManagementPolicyResource) Exists(ctx context.Context, client *cli
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Storage.ManagementPoliciesClient.Get(ctx, id.ResourceGroup, id.Name)
+	_, err = client.Storage.ManagementPoliciesClient.Get(ctx, id.ResourceGroup, id.Name, armstorage.ManagementPolicyNameDefault, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return utils.Bool(false), nil
 		}
 		return nil, fmt.Errorf("retrieving Management Policy (Account %q / Resource Group %q): %+v", id.Name, id.ResourceGroup, err)

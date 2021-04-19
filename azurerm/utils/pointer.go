@@ -20,6 +20,10 @@ func Float(input float64) *float64 {
 	return &input
 }
 
+func Float32(input float32) *float32 {
+	return &input
+}
+
 func String(input string) *string {
 	return &input
 }

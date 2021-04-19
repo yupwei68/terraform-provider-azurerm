@@ -720,9 +720,9 @@ func (r StorageAccountResource) Exists(ctx context.Context, client *clients.Clie
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Storage.AccountsClient.GetProperties(ctx, id.ResourceGroup, id.Name, "")
+	_, err = client.Storage.AccountsClient.GetProperties(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return utils.Bool(false), nil
 		}
 		return nil, fmt.Errorf("retrieving Storage Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
@@ -735,7 +735,7 @@ func (r StorageAccountResource) Destroy(ctx context.Context, client *clients.Cli
 	if err != nil {
 		return nil, err
 	}
-	if _, err := client.Storage.AccountsClient.Delete(ctx, id.ResourceGroup, id.Name); err != nil {
+	if _, err := client.Storage.AccountsClient.Delete(ctx, id.ResourceGroup, id.Name, nil); err != nil {
 		return nil, fmt.Errorf("deleting Storage Account %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 	return utils.Bool(true), nil

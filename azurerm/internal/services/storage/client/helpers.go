@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/parse"
 )
 
@@ -20,7 +20,7 @@ var (
 type accountDetails struct {
 	ID            string
 	ResourceGroup string
-	Properties    *storage.AccountProperties
+	Properties    *armstorage.StorageAccount
 
 	accountKey *string
 	name       string
@@ -35,16 +35,16 @@ func (ad *accountDetails) AccountKey(ctx context.Context, client Client) (*strin
 	}
 
 	log.Printf("[DEBUG] Cache Miss - looking up the account key for storage account %q..", ad.name)
-	props, err := client.AccountsClient.ListKeys(ctx, ad.ResourceGroup, ad.name, storage.Kerb)
+	props, err := client.AccountsClient.ListKeys(ctx, ad.ResourceGroup, ad.name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error Listing Keys for Storage Account %q (Resource Group %q): %+v", ad.name, ad.ResourceGroup, err)
 	}
 
-	if props.Keys == nil || len(*props.Keys) == 0 || (*props.Keys)[0].Value == nil {
+	if props.StorageAccountListKeysResult.Keys == nil || len(*props.StorageAccountListKeysResult.Keys) == 0 || (*props.StorageAccountListKeysResult.Keys)[0].Value == nil {
 		return nil, fmt.Errorf("Keys were nil for Storage Account %q (Resource Group %q): %+v", ad.name, ad.ResourceGroup, err)
 	}
 
-	keys := *props.Keys
+	keys := *props.StorageAccountListKeysResult.Keys
 	ad.accountKey = keys[0].Value
 
 	// force-cache this
@@ -53,7 +53,7 @@ func (ad *accountDetails) AccountKey(ctx context.Context, client Client) (*strin
 	return ad.accountKey, nil
 }
 
-func (client Client) AddToCache(accountName string, props storage.Account) error {
+func (client Client) AddToCache(accountName string, props armstorage.StorageAccount) error {
 	accountsLock.Lock()
 	defer accountsLock.Unlock()
 
@@ -81,22 +81,20 @@ func (client Client) FindAccount(ctx context.Context, accountName string) (*acco
 		return &existing, nil
 	}
 
-	accountsPage, err := client.AccountsClient.List(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("Error retrieving storage accounts: %+v", err)
+	accountsPage := client.AccountsClient.List(nil)
+	if accountsPage.Err() != nil {
+		return nil, fmt.Errorf("Error retrieving storage accounts: %+v", accountsPage.Err())
 	}
 
-	var accounts []storage.Account
-	for accountsPage.NotDone() {
-		accounts = append(accounts, accountsPage.Values()...)
-		err = accountsPage.NextWithContext(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("Error retrieving next page of storage accounts: %+v", err)
+	var accounts []armstorage.StorageAccount
+	for accountsPage.NextPage(ctx) {
+		if listResult := accountsPage.PageResponse().StorageAccountListResult; listResult != nil && listResult.Value != nil {
+			accounts = append(accounts, *accountsPage.PageResponse().StorageAccountListResult.Value...)
 		}
 	}
 
 	for _, v := range accounts {
-		if v.Name == nil {
+		if v.TrackedResource.Name == nil {
 			continue
 		}
 
@@ -115,7 +113,7 @@ func (client Client) FindAccount(ctx context.Context, accountName string) (*acco
 	return nil, nil
 }
 
-func populateAccountDetails(accountName string, props storage.Account) (*accountDetails, error) {
+func populateAccountDetails(accountName string, props armstorage.StorageAccount) (*accountDetails, error) {
 	if props.ID == nil {
 		return nil, fmt.Errorf("`id` was nil for Account %q", accountName)
 	}
@@ -130,6 +128,6 @@ func populateAccountDetails(accountName string, props storage.Account) (*account
 		name:          accountName,
 		ID:            accountId,
 		ResourceGroup: id.ResourceGroup,
-		Properties:    props.AccountProperties,
+		Properties:    &props,
 	}, nil
 }

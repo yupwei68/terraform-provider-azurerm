@@ -260,9 +260,9 @@ func resourceManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}) e
 
 	createDisk := armcompute.Disk{
 		Resource: armcompute.Resource{
-			Name:           &name,
-			Location:       &location,
-			Tags:  tags.Track2Expand(t),
+			Name:     &name,
+			Location: &location,
+			Tags:     tags.Track2Expand(t),
 		},
 		Properties: props,
 		SKU: &armcompute.DiskSKU{
@@ -488,7 +488,7 @@ func resourceManagedDiskUpdate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return fmt.Errorf("Error expanding managed disk %q (Resource Group %q): %+v", name, resourceGroup, err)
 		}
-		
+
 		if _, err = diskFuture.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 			return fmt.Errorf("Error waiting for expand operation on managed disk %q (Resource Group %q): %+v", name, resourceGroup, err)
 		}

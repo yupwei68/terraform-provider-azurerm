@@ -8,16 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	azautorest "github.com/Azure/go-autorest/autorest"
 	autorestAzure "github.com/Azure/go-autorest/autorest/azure"
-	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/go-getter/helper/url"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/locks"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/network"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/validate"
@@ -68,13 +68,13 @@ func resourceStorageAccount() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(storage.Storage),
-					string(storage.BlobStorage),
-					string(storage.BlockBlobStorage),
-					string(storage.FileStorage),
-					string(storage.StorageV2),
+					string(armstorage.KindStorage),
+					string(armstorage.KindBlobStorage),
+					string(armstorage.KindBlockBlobStorage),
+					string(armstorage.KindFileStorage),
+					string(armstorage.KindStorageV2),
 				}, true),
-				Default: string(storage.StorageV2),
+				Default: string(armstorage.KindStorageV2),
 			},
 
 			"account_tier": {
@@ -108,8 +108,8 @@ func resourceStorageAccount() *schema.Resource {
 				Optional: true,
 				Computed: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(storage.Cool),
-					string(storage.Hot),
+					string(armstorage.AccessTierCool),
+					string(armstorage.AccessTierHot),
 				}, true),
 			},
 
@@ -142,11 +142,11 @@ func resourceStorageAccount() *schema.Resource {
 			"min_tls_version": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  string(storage.TLS10),
+				Default:  string(armstorage.MinimumTLSVersionTLS10),
 				ValidateFunc: validation.StringInSlice([]string{
-					string(storage.TLS10),
-					string(storage.TLS11),
-					string(storage.TLS12),
+					string(armstorage.MinimumTLSVersionTLS10),
+					string(armstorage.MinimumTLSVersionTLS11),
+					string(armstorage.MinimumTLSVersionTLS12),
 				}, false),
 			},
 
@@ -177,10 +177,10 @@ func resourceStorageAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									string(storage.AzureServices),
-									string(storage.Logging),
-									string(storage.Metrics),
-									string(storage.None),
+									string(armstorage.BypassAzureServices),
+									string(armstorage.BypassLogging),
+									string(armstorage.BypassMetrics),
+									string(armstorage.BypassNone),
 								}, true),
 							},
 							Set: schema.HashString,
@@ -209,8 +209,8 @@ func resourceStorageAccount() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ValidateFunc: validation.StringInSlice([]string{
-								string(storage.DefaultActionAllow),
-								string(storage.DefaultActionDeny),
+								string(armstorage.DefaultActionAllow),
+								string(armstorage.DefaultActionDeny),
 							}, false),
 						},
 					},
@@ -573,7 +573,7 @@ func resourceStorageAccount() *schema.Resource {
 			if d.HasChange("account_kind") {
 				accountKind, changedKind := d.GetChange("account_kind")
 
-				if accountKind != string(storage.Storage) && changedKind != string(storage.StorageV2) {
+				if accountKind != string(armstorage.KindStorage) && changedKind != string(armstorage.KindStorageV2) {
 					log.Printf("[DEBUG] recreate storage account, could't be migrated from %s to %s", accountKind, changedKind)
 					d.ForceNew("account_kind")
 				} else {
@@ -628,15 +628,15 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 	locks.ByName(storageAccountName, storageAccountResourceName)
 	defer locks.UnlockByName(storageAccountName, storageAccountResourceName)
 
-	existing, err := client.GetProperties(ctx, resourceGroupName, storageAccountName, "")
+	existing, err := client.GetProperties(ctx, resourceGroupName, storageAccountName, nil)
 	if err != nil {
-		if !utils.ResponseWasNotFound(existing.Response) {
+		if !utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error checking for presence of existing Storage Account %q (Resource Group %q): %s", storageAccountName, resourceGroupName, err)
 		}
 	}
 
-	if existing.ID != nil && *existing.ID != "" {
-		return tf.ImportAsExistsError("azurerm_storage_account", *existing.ID)
+	if existing.StorageAccount != nil && existing.StorageAccount.ID != nil && *existing.StorageAccount.ID != "" {
+		return tf.ImportAsExistsError("azurerm_storage_account", *existing.StorageAccount.ID)
 	}
 
 	accountKind := d.Get("account_kind").(string)
@@ -651,15 +651,17 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 	replicationType := d.Get("account_replication_type").(string)
 	storageType := fmt.Sprintf("%s_%s", accountTier, replicationType)
 
-	parameters := storage.AccountCreateParameters{
+	sku := armstorage.SKUName(storageType)
+	kind := armstorage.Kind(accountKind)
+	parameters := armstorage.StorageAccountCreateParameters{
 		Location: &location,
-		Sku: &storage.Sku{
-			Name: storage.SkuName(storageType),
+		SKU: &armstorage.SKU{
+			Name: &sku,
 		},
-		Tags: tags.Expand(t),
-		Kind: storage.Kind(accountKind),
-		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
-			EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
+		Tags: tags.Track2ExpandString(t),
+		Kind: &kind,
+		Properties: &armstorage.StorageAccountPropertiesCreateParameters{
+			EnableHTTPsTrafficOnly: &enableHTTPSTrafficOnly,
 			NetworkRuleSet:         expandStorageAccountNetworkRules(d),
 			IsHnsEnabled:           &isHnsEnabled,
 		},
@@ -671,88 +673,92 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 	// USGovernmentCloud allow_blob_public_access and min_tls_version allowed as of issue 9128
 	// https://github.com/terraform-providers/terraform-provider-azurerm/issues/9128
 	if envName != autorestAzure.PublicCloud.Name && envName != autorestAzure.USGovernmentCloud.Name {
-		if allowBlobPublicAccess && minimumTLSVersion != string(storage.TLS10) {
+		if allowBlobPublicAccess && minimumTLSVersion != string(armstorage.MinimumTLSVersionTLS10) {
 			return fmt.Errorf(`"allow_blob_public_access" and "min_tls_version" are not supported for a Storage Account located in %q`, envName)
 		}
 	} else {
-		parameters.AccountPropertiesCreateParameters.AllowBlobPublicAccess = &allowBlobPublicAccess
-		parameters.AccountPropertiesCreateParameters.MinimumTLSVersion = storage.MinimumTLSVersion(minimumTLSVersion)
+		parameters.Properties.AllowBlobPublicAccess = &allowBlobPublicAccess
+		minVersion := armstorage.MinimumTLSVersion(minimumTLSVersion)
+		parameters.Properties.MinimumTLSVersion = &minVersion
 	}
 
 	if _, ok := d.GetOk("identity"); ok {
 		storageAccountIdentity := expandAzureRmStorageAccountIdentity(d)
-		parameters.Identity = storageAccountIdentity
+		parameters.IDentity = storageAccountIdentity
 	}
 
 	if _, ok := d.GetOk("custom_domain"); ok {
-		parameters.CustomDomain = expandStorageAccountCustomDomain(d)
+		parameters.Properties.CustomDomain = expandStorageAccountCustomDomain(d)
 	}
 
 	// BlobStorage does not support ZRS
-	if accountKind == string(storage.BlobStorage) {
-		if string(parameters.Sku.Name) == string(storage.StandardZRS) {
+	if accountKind == string(armstorage.KindBlobStorage) {
+		if *parameters.SKU.Name == armstorage.SKUNameStandardZrs {
 			return fmt.Errorf("A `account_replication_type` of `ZRS` isn't supported for Blob Storage accounts.")
 		}
 	}
 
 	// AccessTier is only valid for BlobStorage, StorageV2, and FileStorage accounts
-	if accountKind == string(storage.BlobStorage) || accountKind == string(storage.StorageV2) || accountKind == string(storage.FileStorage) {
+	if accountKind == string(armstorage.KindBlobStorage) || accountKind == string(armstorage.KindStorageV2) || accountKind == string(armstorage.KindFileStorage) {
 		accessTier, ok := d.GetOk("access_tier")
 		if !ok {
 			// default to "Hot"
-			accessTier = string(storage.Hot)
+			accessTier = string(armstorage.AccessTierHot)
 		}
 
-		parameters.AccountPropertiesCreateParameters.AccessTier = storage.AccessTier(accessTier.(string))
-	} else if isHnsEnabled && accountKind != string(storage.BlockBlobStorage) {
+		tier := armstorage.AccessTier(accessTier.(string))
+		parameters.Properties.AccessTier = &tier
+	} else if isHnsEnabled && accountKind != string(armstorage.KindBlockBlobStorage) {
 		return fmt.Errorf("`is_hns_enabled` can only be used with account kinds `StorageV2`, `BlobStorage` and `BlockBlobStorage`")
 	}
 
 	// AccountTier must be Premium for FileStorage
-	if accountKind == string(storage.FileStorage) {
-		if string(parameters.Sku.Tier) == string(storage.StandardLRS) {
+	if accountKind == string(armstorage.KindFileStorage) {
+		if *parameters.SKU.Tier == armstorage.SKUTierStandard {
 			return fmt.Errorf("A `account_tier` of `Standard` is not supported for FileStorage accounts.")
 		}
 	}
 
 	// nolint staticcheck
 	if v, ok := d.GetOkExists("large_file_share_enabled"); ok {
-		parameters.LargeFileSharesState = storage.LargeFileSharesStateDisabled
+		disableLargeFile := armstorage.LargeFileSharesStateDisabled
+		enableLargeFile := armstorage.LargeFileSharesStateEnabled
+		parameters.Properties.LargeFileSharesState = &disableLargeFile
 		if v.(bool) {
-			parameters.LargeFileSharesState = storage.LargeFileSharesStateEnabled
+			parameters.Properties.LargeFileSharesState = &enableLargeFile
 		}
 	}
 
 	// Create
-	future, err := client.Create(ctx, resourceGroupName, storageAccountName, parameters)
+	future, err := client.BeginCreate(ctx, resourceGroupName, storageAccountName, parameters, nil)
 	if err != nil {
 		return fmt.Errorf("Error creating Azure Storage Account %q: %+v", storageAccountName, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error waiting for Azure Storage Account %q to be created: %+v", storageAccountName, err)
 	}
 
-	account, err := client.GetProperties(ctx, resourceGroupName, storageAccountName, "")
+	account, err := client.GetProperties(ctx, resourceGroupName, storageAccountName, nil)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Azure Storage Account %q: %+v", storageAccountName, err)
 	}
 
-	if account.ID == nil {
+	if account.StorageAccount.ID == nil {
 		return fmt.Errorf("Cannot read Storage Account %q (resource group %q) ID",
 			storageAccountName, resourceGroupName)
 	}
-	log.Printf("[INFO] storage account %q ID: %q", storageAccountName, *account.ID)
-	d.SetId(*account.ID)
+	log.Printf("[INFO] storage account %q ID: %q", storageAccountName, *account.StorageAccount.ID)
+	d.SetId(*account.StorageAccount.ID)
 
 	if val, ok := d.GetOk("blob_properties"); ok {
 		// FileStorage does not support blob settings
-		if accountKind != string(storage.FileStorage) {
+		if accountKind != string(armstorage.KindFileStorage) {
 			blobClient := meta.(*clients.Client).Storage.BlobServicesClient
 
 			blobProperties := expandBlobProperties(val.([]interface{}))
 
-			if _, err = blobClient.SetServiceProperties(ctx, resourceGroupName, storageAccountName, blobProperties); err != nil {
+			if _, err = blobClient.SetServiceProperties(ctx, resourceGroupName, storageAccountName, blobProperties, nil); err != nil {
 				return fmt.Errorf("Error updating Azure Storage Account `blob_properties` %q: %+v", storageAccountName, err)
 			}
 		} else {
@@ -787,8 +793,8 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 
 	if val, ok := d.GetOk("static_website"); ok {
 		// static website only supported on StorageV2 and BlockBlobStorage
-		if accountKind != string(storage.StorageV2) && accountKind != string(storage.BlockBlobStorage) {
-			return fmt.Errorf("`static_website` is only supported for StorageV2 and BlockBlobStorage.")
+		if accountKind != string(armstorage.KindStorageV2) && accountKind != string(armstorage.KindBlockBlobStorage) {
+			return fmt.Errorf("`static_website` is only supported for StorageV2 and BlockBlobarmstorage.")
 		}
 		storageClient := meta.(*clients.Client).Storage
 
@@ -836,46 +842,48 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 	storageType := fmt.Sprintf("%s_%s", accountTier, replicationType)
 	accountKind := d.Get("account_kind").(string)
 
-	if accountKind == string(storage.BlobStorage) {
-		if storageType == string(storage.StandardZRS) {
+	if accountKind == string(armstorage.KindBlobStorage) {
+		if storageType == string(armstorage.SKUNameStandardZrs) {
 			return fmt.Errorf("A `account_replication_type` of `ZRS` isn't supported for Blob Storage accounts.")
 		}
 	}
 
 	if d.HasChange("account_replication_type") {
-		sku := storage.Sku{
-			Name: storage.SkuName(storageType),
+		skuName := armstorage.SKUName(storageType)
+		sku := armstorage.SKU{
+			Name: &skuName,
 		}
 
-		opts := storage.AccountUpdateParameters{
-			Sku: &sku,
+		opts := armstorage.StorageAccountUpdateParameters{
+			SKU: &sku,
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account type %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("account_kind") {
-		opts := storage.AccountUpdateParameters{
-			Kind: storage.Kind(accountKind),
+		kind := armstorage.Kind(accountKind)
+		opts := armstorage.StorageAccountUpdateParameters{
+			Kind: &kind,
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account account_kind %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("access_tier") {
-		accessTier := d.Get("access_tier").(string)
+		accessTier := armstorage.AccessTier(d.Get("access_tier").(string))
 
-		opts := storage.AccountUpdateParameters{
-			AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-				AccessTier: storage.AccessTier(accessTier),
+		opts := armstorage.StorageAccountUpdateParameters{
+			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+				AccessTier: &accessTier,
 			},
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account access_tier %q: %+v", storageAccountName, err)
 		}
 	}
@@ -883,23 +891,23 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 	if d.HasChange("tags") {
 		t := d.Get("tags").(map[string]interface{})
 
-		opts := storage.AccountUpdateParameters{
-			Tags: tags.Expand(t),
+		opts := armstorage.StorageAccountUpdateParameters{
+			Tags: tags.Track2ExpandString(t),
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account tags %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("custom_domain") {
-		opts := storage.AccountUpdateParameters{
-			AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
+		opts := armstorage.StorageAccountUpdateParameters{
+			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
 				CustomDomain: expandStorageAccountCustomDomain(d),
 			},
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account Custom Domain %q: %+v", storageAccountName, err)
 		}
 	}
@@ -907,13 +915,13 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 	if d.HasChange("enable_https_traffic_only") {
 		enableHTTPSTrafficOnly := d.Get("enable_https_traffic_only").(bool)
 
-		opts := storage.AccountUpdateParameters{
-			AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
+		opts := armstorage.StorageAccountUpdateParameters{
+			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+				EnableHTTPsTrafficOnly: &enableHTTPSTrafficOnly,
 			},
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account enable_https_traffic_only %q: %+v", storageAccountName, err)
 		}
 	}
@@ -926,17 +934,18 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 		// USGovernmentCloud "min_tls_version" allowed as of issue 9128
 		// https://github.com/terraform-providers/terraform-provider-azurerm/issues/9128
 		if envName != autorestAzure.PublicCloud.Name && envName != autorestAzure.USGovernmentCloud.Name {
-			if minimumTLSVersion != string(storage.TLS10) {
+			if minimumTLSVersion != string(armstorage.MinimumTLSVersionTLS10) {
 				return fmt.Errorf(`"min_tls_version" is not supported for a Storage Account located in %q`, envName)
 			}
 		} else {
-			opts := storage.AccountUpdateParameters{
-				AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-					MinimumTLSVersion: storage.MinimumTLSVersion(minimumTLSVersion),
+			minVersion := armstorage.MinimumTLSVersion(minimumTLSVersion)
+			opts := armstorage.StorageAccountUpdateParameters{
+				Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+					MinimumTLSVersion: &minVersion,
 				},
 			}
 
-			if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+			if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 				return fmt.Errorf("Error updating Azure Storage Account min_tls_version %q: %+v", storageAccountName, err)
 			}
 		}
@@ -954,63 +963,63 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 				return fmt.Errorf(`"allow_blob_public_access" is not supported for a Storage Account located in %q`, envName)
 			}
 		} else {
-			opts := storage.AccountUpdateParameters{
-				AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
+			opts := armstorage.StorageAccountUpdateParameters{
+				Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
 					AllowBlobPublicAccess: &allowBlobPublicAccess,
 				},
 			}
 
-			if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+			if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 				return fmt.Errorf("Error updating Azure Storage Account allow_blob_public_access %q: %+v", storageAccountName, err)
 			}
 		}
 	}
 
 	if d.HasChange("identity") {
-		opts := storage.AccountUpdateParameters{
-			Identity: expandAzureRmStorageAccountIdentity(d),
+		opts := armstorage.StorageAccountUpdateParameters{
+			IDentity: expandAzureRmStorageAccountIdentity(d),
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account identity %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("network_rules") {
-		opts := storage.AccountUpdateParameters{
-			AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
+		opts := armstorage.StorageAccountUpdateParameters{
+			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
 				NetworkRuleSet: expandStorageAccountNetworkRules(d),
 			},
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account network_rules %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("large_file_share_enabled") {
-		isEnabled := storage.LargeFileSharesStateDisabled
+		isEnabled := armstorage.LargeFileSharesStateDisabled
 		if v := d.Get("large_file_share_enabled").(bool); v {
-			isEnabled = storage.LargeFileSharesStateEnabled
+			isEnabled = armstorage.LargeFileSharesStateEnabled
 		}
-		opts := storage.AccountUpdateParameters{
-			AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-				LargeFileSharesState: isEnabled,
+		opts := armstorage.StorageAccountUpdateParameters{
+			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+				LargeFileSharesState: &isEnabled,
 			},
 		}
 
-		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts); err != nil {
+		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
 			return fmt.Errorf("Error updating Azure Storage Account network_rules %q: %+v", storageAccountName, err)
 		}
 	}
 
 	if d.HasChange("blob_properties") {
 		// FileStorage does not support blob settings
-		if accountKind != string(storage.FileStorage) {
+		if accountKind != string(armstorage.KindFileStorage) {
 			blobClient := meta.(*clients.Client).Storage.BlobServicesClient
 			blobProperties := expandBlobProperties(d.Get("blob_properties").([]interface{}))
 
-			if _, err = blobClient.SetServiceProperties(ctx, resourceGroupName, storageAccountName, blobProperties); err != nil {
+			if _, err = blobClient.SetServiceProperties(ctx, resourceGroupName, storageAccountName, blobProperties, nil); err != nil {
 				return fmt.Errorf("Error updating Azure Storage Account `blob_properties` %q: %+v", storageAccountName, err)
 			}
 		} else {
@@ -1045,8 +1054,8 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 
 	if d.HasChange("static_website") {
 		// static website only supported on StorageV2 and BlockBlobStorage
-		if accountKind != string(storage.StorageV2) && accountKind != string(storage.BlockBlobStorage) {
-			return fmt.Errorf("`static_website` is only supported for StorageV2 and BlockBlobStorage.")
+		if accountKind != string(armstorage.KindStorageV2) && accountKind != string(armstorage.KindBlockBlobStorage) {
+			return fmt.Errorf("`static_website` is only supported for StorageV2 and BlockBlobarmstorage.")
 		}
 		storageClient := meta.(*clients.Client).Storage
 
@@ -1086,9 +1095,9 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 	name := id.Path["storageAccounts"]
 	resGroup := id.ResourceGroup
 
-	resp, err := client.GetProperties(ctx, resGroup, name, "")
+	resp, err := client.GetProperties(ctx, resGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			d.SetId("")
 			return nil
 		}
@@ -1103,7 +1112,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 	d.Set("primary_access_key", "")
 	d.Set("secondary_access_key", "")
 
-	keys, err := client.ListKeys(ctx, resGroup, name, storage.Kerb)
+	keys, err := client.ListKeys(ctx, resGroup, name, nil)
 	if err != nil {
 		// the API returns a 200 with an inner error of a 409..
 		var hasWriteLock bool
@@ -1120,21 +1129,21 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		}
 	}
 
-	d.Set("name", resp.Name)
+	d.Set("name", resp.StorageAccount.Name)
 	d.Set("resource_group_name", resGroup)
-	if location := resp.Location; location != nil {
+	if location := resp.StorageAccount.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	d.Set("account_kind", resp.Kind)
+	d.Set("account_kind", resp.StorageAccount.Kind)
 
-	if sku := resp.Sku; sku != nil {
+	if sku := resp.StorageAccount.SKU; sku != nil {
 		d.Set("account_tier", sku.Tier)
-		d.Set("account_replication_type", strings.Split(fmt.Sprintf("%v", sku.Name), "_")[1])
+		d.Set("account_replication_type", strings.Split(fmt.Sprintf("%v", *sku.Name), "_")[1])
 	}
 
-	if props := resp.AccountProperties; props != nil {
+	if props := resp.StorageAccount.Properties; props != nil {
 		d.Set("access_tier", props.AccessTier)
-		d.Set("enable_https_traffic_only", props.EnableHTTPSTrafficOnly)
+		d.Set("enable_https_traffic_only", props.EnableHTTPsTrafficOnly)
 		d.Set("is_hns_enabled", props.IsHnsEnabled)
 		d.Set("allow_blob_public_access", props.AllowBlobPublicAccess)
 		// For all Clouds except Public and USGovernmentCloud, "min_tls_version" is not returned from Azure so always persist the default values for "min_tls_version".
@@ -1144,12 +1153,12 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		// https://github.com/terraform-providers/terraform-provider-azurerm/issues/9128
 		envName := meta.(*clients.Client).Account.Environment.Name
 		if envName != autorestAzure.PublicCloud.Name && envName != autorestAzure.USGovernmentCloud.Name {
-			d.Set("min_tls_version", string(storage.TLS10))
+			d.Set("min_tls_version", string(armstorage.MinimumTLSVersionTLS10))
 		} else {
 			// For storage account created using old API, the response of GET call will not return "min_tls_version", either.
-			minTlsVersion := string(storage.TLS10)
-			if props.MinimumTLSVersion != "" {
-				minTlsVersion = string(props.MinimumTLSVersion)
+			minTlsVersion := string(armstorage.MinimumTLSVersionTLS10)
+			if props.MinimumTLSVersion != nil {
+				minTlsVersion = string(*props.MinimumTLSVersion)
 			}
 			d.Set("min_tls_version", minTlsVersion)
 		}
@@ -1164,15 +1173,15 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("primary_location", props.PrimaryLocation)
 		d.Set("secondary_location", props.SecondaryLocation)
 
-		if accessKeys := keys.Keys; accessKeys != nil {
+		if accessKeys := keys.StorageAccountListKeysResult.Keys; accessKeys != nil {
 			storageAccountKeys := *accessKeys
 			if len(storageAccountKeys) > 0 {
-				pcs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.Name, *storageAccountKeys[0].Value, endpointSuffix)
+				pcs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.StorageAccount.Name, *storageAccountKeys[0].Value, endpointSuffix)
 				d.Set("primary_connection_string", pcs)
 			}
 
 			if len(storageAccountKeys) > 1 {
-				scs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.Name, *storageAccountKeys[1].Value, endpointSuffix)
+				scs := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", *resp.StorageAccount.Name, *storageAccountKeys[1].Value, endpointSuffix)
 				d.Set("secondary_connection_string", scs)
 			}
 		}
@@ -1181,11 +1190,11 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 			return fmt.Errorf("error setting primary endpoints and hosts for blob, queue, table and file: %+v", err)
 		}
 
-		if accessKeys := keys.Keys; accessKeys != nil {
+		if accessKeys := keys.StorageAccountListKeysResult.Keys; accessKeys != nil {
 			storageAccountKeys := *accessKeys
 			var primaryBlobConnectStr string
 			if v := props.PrimaryEndpoints; v != nil {
-				primaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.Name, storageAccountKeys[0].Value)
+				primaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.StorageAccount.Name, storageAccountKeys[0].Value)
 			}
 			d.Set("primary_blob_connection_string", primaryBlobConnectStr)
 		}
@@ -1194,11 +1203,11 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 			return fmt.Errorf("error setting secondary endpoints and hosts for blob, queue, table: %+v", err)
 		}
 
-		if accessKeys := keys.Keys; accessKeys != nil {
+		if accessKeys := keys.StorageAccountListKeysResult.Keys; accessKeys != nil {
 			storageAccountKeys := *accessKeys
 			var secondaryBlobConnectStr string
 			if v := props.SecondaryEndpoints; v != nil {
-				secondaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.Name, storageAccountKeys[1].Value)
+				secondaryBlobConnectStr = getBlobConnectionString(v.Blob, resp.StorageAccount.Name, storageAccountKeys[1].Value)
 			}
 			d.Set("secondary_blob_connection_string", secondaryBlobConnectStr)
 		}
@@ -1207,18 +1216,18 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 			return fmt.Errorf("Error setting `network_rules`: %+v", err)
 		}
 
-		if props.LargeFileSharesState != "" {
-			d.Set("large_file_share_enabled", props.LargeFileSharesState == storage.LargeFileSharesStateEnabled)
+		if props.LargeFileSharesState != nil {
+			d.Set("large_file_share_enabled", *props.LargeFileSharesState == armstorage.LargeFileSharesStateEnabled)
 		}
 	}
 
-	if accessKeys := keys.Keys; accessKeys != nil {
+	if accessKeys := keys.StorageAccountListKeysResult.Keys; accessKeys != nil {
 		storageAccountKeys := *accessKeys
 		d.Set("primary_access_key", storageAccountKeys[0].Value)
 		d.Set("secondary_access_key", storageAccountKeys[1].Value)
 	}
 
-	identity := flattenAzureRmStorageAccountIdentity(resp.Identity)
+	identity := flattenAzureRmStorageAccountIdentity(resp.StorageAccount.IDentity)
 	if err := d.Set("identity", identity); err != nil {
 		return err
 	}
@@ -1235,26 +1244,26 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 	blobClient := storageClient.BlobServicesClient
 
 	// FileStorage does not support blob settings
-	if resp.Kind != storage.FileStorage {
-		blobProps, err := blobClient.GetServiceProperties(ctx, resGroup, name)
+	if *resp.StorageAccount.Kind != armstorage.KindFileStorage {
+		blobProps, err := blobClient.GetServiceProperties(ctx, resGroup, name, nil)
 		if err != nil {
-			if !utils.ResponseWasNotFound(blobProps.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("Error reading blob properties for AzureRM Storage Account %q: %+v", name, err)
 			}
 		}
 
-		if err := d.Set("blob_properties", flattenBlobProperties(blobProps)); err != nil {
+		if err := d.Set("blob_properties", flattenBlobProperties(*blobProps.BlobServiceProperties)); err != nil {
 			return fmt.Errorf("Error setting `blob_properties `for AzureRM Storage Account %q: %+v", name, err)
 		}
 	}
 
 	// queue is only available for certain tier and kind (as specified below)
-	if resp.Sku == nil {
+	if resp.StorageAccount.SKU == nil {
 		return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): `sku` was nil", name, resGroup)
 	}
 
-	if resp.Sku.Tier == storage.Standard {
-		if resp.Kind == storage.Storage || resp.Kind == storage.StorageV2 {
+	if *resp.StorageAccount.SKU.Tier == armstorage.SKUTierStandard {
+		if *resp.StorageAccount.Kind == armstorage.KindStorage || *resp.StorageAccount.Kind == armstorage.KindStorageV2 {
 			queueClient, err := storageClient.QueuesClient(ctx, *account)
 			if err != nil {
 				return fmt.Errorf("Error building Queues Client: %s", err)
@@ -1274,7 +1283,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 	var staticWebsite []interface{}
 
 	// static website only supported on StorageV2 and BlockBlobStorage
-	if resp.Kind == storage.StorageV2 || resp.Kind == storage.BlockBlobStorage {
+	if *resp.StorageAccount.Kind == armstorage.KindStorageV2 || *resp.StorageAccount.Kind == armstorage.KindBlockBlobStorage {
 		storageClient := meta.(*clients.Client).Storage
 
 		account, err := storageClient.FindAccount(ctx, name)
@@ -1301,7 +1310,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Error setting `static_website `for AzureRM Storage Account %q: %+v", name, err)
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSetString(d, resp.StorageAccount.Tags)
 }
 
 func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) error {
@@ -1320,9 +1329,9 @@ func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) erro
 	locks.ByName(name, storageAccountResourceName)
 	defer locks.UnlockByName(name, storageAccountResourceName)
 
-	read, err := client.GetProperties(ctx, resourceGroup, name, "")
+	read, err := client.GetProperties(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(read.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return nil
 		}
 
@@ -1331,7 +1340,7 @@ func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) erro
 
 	// the networking api's only allow a single change to be made to a network layout at once, so let's lock to handle that
 	virtualNetworkNames := make([]string, 0)
-	if props := read.AccountProperties; props != nil {
+	if props := read.StorageAccount.Properties; props != nil {
 		if rules := props.NetworkRuleSet; rules != nil {
 			if vnr := rules.VirtualNetworkRules; vnr != nil {
 				for _, v := range *vnr {
@@ -1359,9 +1368,9 @@ func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) erro
 	locks.MultipleByName(&virtualNetworkNames, network.VirtualNetworkResourceName)
 	defer locks.UnlockMultipleByName(&virtualNetworkNames, network.VirtualNetworkResourceName)
 
-	resp, err := client.Delete(ctx, resourceGroup, name)
+	_, err = client.Delete(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if !response.WasNotFound(resp.Response) {
+		if !utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error issuing delete request for Storage Account %q (Resource Group %q): %+v", name, resourceGroup, err)
 		}
 	}
@@ -1372,10 +1381,10 @@ func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) erro
 	return nil
 }
 
-func expandStorageAccountCustomDomain(d *schema.ResourceData) *storage.CustomDomain {
+func expandStorageAccountCustomDomain(d *schema.ResourceData) *armstorage.CustomDomain {
 	domains := d.Get("custom_domain").([]interface{})
 	if len(domains) == 0 {
-		return &storage.CustomDomain{
+		return &armstorage.CustomDomain{
 			Name: utils.String(""),
 		}
 	}
@@ -1383,13 +1392,13 @@ func expandStorageAccountCustomDomain(d *schema.ResourceData) *storage.CustomDom
 	domain := domains[0].(map[string]interface{})
 	name := domain["name"].(string)
 	useSubDomain := domain["use_subdomain"].(bool)
-	return &storage.CustomDomain{
+	return &armstorage.CustomDomain{
 		Name:             utils.String(name),
 		UseSubDomainName: utils.Bool(useSubDomain),
 	}
 }
 
-func flattenStorageAccountCustomDomain(input *storage.CustomDomain) []interface{} {
+func flattenStorageAccountCustomDomain(input *armstorage.CustomDomain) []interface{} {
 	domain := make(map[string]interface{})
 
 	if v := input.Name; v != nil {
@@ -1400,36 +1409,38 @@ func flattenStorageAccountCustomDomain(input *storage.CustomDomain) []interface{
 	return []interface{}{domain}
 }
 
-func expandStorageAccountNetworkRules(d *schema.ResourceData) *storage.NetworkRuleSet {
+func expandStorageAccountNetworkRules(d *schema.ResourceData) *armstorage.NetworkRuleSet {
 	networkRules := d.Get("network_rules").([]interface{})
 	if len(networkRules) == 0 {
 		// Default access is enabled when no network rules are set.
-		return &storage.NetworkRuleSet{DefaultAction: storage.DefaultActionAllow}
+		defaultActionAllow := armstorage.DefaultActionAllow
+		return &armstorage.NetworkRuleSet{DefaultAction: &defaultActionAllow}
 	}
 
 	networkRule := networkRules[0].(map[string]interface{})
-	networkRuleSet := &storage.NetworkRuleSet{
+	networkRuleSet := &armstorage.NetworkRuleSet{
 		IPRules:             expandStorageAccountIPRules(networkRule),
 		VirtualNetworkRules: expandStorageAccountVirtualNetworks(networkRule),
 		Bypass:              expandStorageAccountBypass(networkRule),
 	}
 
 	if v := networkRule["default_action"]; v != nil {
-		networkRuleSet.DefaultAction = storage.DefaultAction(v.(string))
+		defaultAction := armstorage.DefaultAction(v.(string))
+		networkRuleSet.DefaultAction = &defaultAction
 	}
 
 	return networkRuleSet
 }
 
-func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]storage.IPRule {
+func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]armstorage.IPRule {
 	ipRulesInfo := networkRule["ip_rules"].(*schema.Set).List()
-	ipRules := make([]storage.IPRule, len(ipRulesInfo))
+	ipRules := make([]armstorage.IPRule, len(ipRulesInfo))
 
 	for i, ipRuleConfig := range ipRulesInfo {
 		attrs := ipRuleConfig.(string)
-		ipRule := storage.IPRule{
+		ipRule := armstorage.IPRule{
 			IPAddressOrRange: utils.String(attrs),
-			Action:           storage.Allow,
+			Action:           utils.String("Allow"),
 		}
 		ipRules[i] = ipRule
 	}
@@ -1437,15 +1448,15 @@ func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]storage.
 	return &ipRules
 }
 
-func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]storage.VirtualNetworkRule {
+func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]armstorage.VirtualNetworkRule {
 	virtualNetworkInfo := networkRule["virtual_network_subnet_ids"].(*schema.Set).List()
-	virtualNetworks := make([]storage.VirtualNetworkRule, len(virtualNetworkInfo))
+	virtualNetworks := make([]armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
 
 	for i, virtualNetworkConfig := range virtualNetworkInfo {
 		attrs := virtualNetworkConfig.(string)
-		virtualNetwork := storage.VirtualNetworkRule{
+		virtualNetwork := armstorage.VirtualNetworkRule{
 			VirtualNetworkResourceID: utils.String(attrs),
-			Action:                   storage.Allow,
+			Action:                   utils.String("Allow"),
 		}
 		virtualNetworks[i] = virtualNetwork
 	}
@@ -1453,24 +1464,24 @@ func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]
 	return &virtualNetworks
 }
 
-func expandStorageAccountBypass(networkRule map[string]interface{}) storage.Bypass {
+func expandStorageAccountBypass(networkRule map[string]interface{}) *armstorage.Bypass {
 	bypassInfo := networkRule["bypass"].(*schema.Set).List()
 
 	var bypassValues []string
 	for _, bypassConfig := range bypassInfo {
 		bypassValues = append(bypassValues, bypassConfig.(string))
 	}
-
-	return storage.Bypass(strings.Join(bypassValues, ", "))
+	result := armstorage.Bypass(strings.Join(bypassValues, ", "))
+	return &result
 }
 
-func expandBlobProperties(input []interface{}) storage.BlobServiceProperties {
-	props := storage.BlobServiceProperties{
-		BlobServicePropertiesProperties: &storage.BlobServicePropertiesProperties{
-			Cors: &storage.CorsRules{
-				CorsRules: &[]storage.CorsRule{},
+func expandBlobProperties(input []interface{}) armstorage.BlobServiceProperties {
+	props := armstorage.BlobServiceProperties{
+		BlobServiceProperties: &armstorage.BlobServicePropertiesAutoGenerated{
+			Cors: &armstorage.CorsRules{
+				CorsRules: &[]armstorage.CorsRule{},
 			},
-			DeleteRetentionPolicy: &storage.DeleteRetentionPolicy{
+			DeleteRetentionPolicy: &armstorage.DeleteRetentionPolicy{
 				Enabled: utils.Bool(false),
 			},
 		},
@@ -1483,16 +1494,16 @@ func expandBlobProperties(input []interface{}) storage.BlobServiceProperties {
 	v := input[0].(map[string]interface{})
 
 	deletePolicyRaw := v["delete_retention_policy"].([]interface{})
-	props.BlobServicePropertiesProperties.DeleteRetentionPolicy = expandBlobPropertiesDeleteRetentionPolicy(deletePolicyRaw)
+	props.BlobServiceProperties.DeleteRetentionPolicy = expandBlobPropertiesDeleteRetentionPolicy(deletePolicyRaw)
 
 	corsRaw := v["cors_rule"].([]interface{})
-	props.BlobServicePropertiesProperties.Cors = expandBlobPropertiesCors(corsRaw)
+	props.BlobServiceProperties.Cors = expandBlobPropertiesCors(corsRaw)
 
 	return props
 }
 
-func expandBlobPropertiesDeleteRetentionPolicy(input []interface{}) *storage.DeleteRetentionPolicy {
-	deleteRetentionPolicy := storage.DeleteRetentionPolicy{
+func expandBlobPropertiesDeleteRetentionPolicy(input []interface{}) *armstorage.DeleteRetentionPolicy {
+	deleteRetentionPolicy := armstorage.DeleteRetentionPolicy{
 		Enabled: utils.Bool(false),
 	}
 
@@ -1508,27 +1519,26 @@ func expandBlobPropertiesDeleteRetentionPolicy(input []interface{}) *storage.Del
 	return &deleteRetentionPolicy
 }
 
-func expandBlobPropertiesCors(input []interface{}) *storage.CorsRules {
-	blobCorsRules := storage.CorsRules{}
+func expandBlobPropertiesCors(input []interface{}) *armstorage.CorsRules {
+	blobCorsRules := armstorage.CorsRules{}
 
 	if len(input) == 0 {
 		return &blobCorsRules
 	}
 
-	corsRules := make([]storage.CorsRule, 0)
+	corsRules := make([]armstorage.CorsRule, 0)
 	for _, attr := range input {
 		corsRuleAttr := attr.(map[string]interface{})
-		corsRule := storage.CorsRule{}
+		corsRule := armstorage.CorsRule{}
 
 		allowedOrigins := *utils.ExpandStringSlice(corsRuleAttr["allowed_origins"].([]interface{}))
 		allowedHeaders := *utils.ExpandStringSlice(corsRuleAttr["allowed_headers"].([]interface{}))
-		allowedMethods := *utils.ExpandStringSlice(corsRuleAttr["allowed_methods"].([]interface{}))
 		exposedHeaders := *utils.ExpandStringSlice(corsRuleAttr["exposed_headers"].([]interface{}))
 		maxAgeInSeconds := int32(corsRuleAttr["max_age_in_seconds"].(int))
 
 		corsRule.AllowedOrigins = &allowedOrigins
 		corsRule.AllowedHeaders = &allowedHeaders
-		corsRule.AllowedMethods = &allowedMethods
+		corsRule.AllowedMethods = expandStorageCorsMethods(corsRuleAttr["allowed_methods"].([]interface{}))
 		corsRule.ExposedHeaders = &exposedHeaders
 		corsRule.MaxAgeInSeconds = &maxAgeInSeconds
 
@@ -1538,6 +1548,18 @@ func expandBlobPropertiesCors(input []interface{}) *storage.CorsRules {
 	blobCorsRules.CorsRules = &corsRules
 
 	return &blobCorsRules
+}
+
+func expandStorageCorsMethods(input []interface{}) *[]armstorage.CorsRuleAllowedMethodsItem {
+	result := make([]armstorage.CorsRuleAllowedMethodsItem, 0)
+	for _, item := range input {
+		if item != nil {
+			result = append(result, armstorage.CorsRuleAllowedMethodsItem(item.(string)))
+		} else {
+			result = append(result, "")
+		}
+	}
+	return &result
 }
 
 func expandQueueProperties(input []interface{}) (queues.StorageServiceProperties, error) {
@@ -1687,7 +1709,7 @@ func expandStaticWebsiteProperties(input []interface{}) accounts.StorageServiceP
 	return properties
 }
 
-func flattenStorageAccountNetworkRules(input *storage.NetworkRuleSet) []interface{} {
+func flattenStorageAccountNetworkRules(input *armstorage.NetworkRuleSet) []interface{} {
 	if input == nil {
 		return []interface{}{}
 	}
@@ -1696,13 +1718,13 @@ func flattenStorageAccountNetworkRules(input *storage.NetworkRuleSet) []interfac
 
 	networkRules["ip_rules"] = schema.NewSet(schema.HashString, flattenStorageAccountIPRules(input.IPRules))
 	networkRules["virtual_network_subnet_ids"] = schema.NewSet(schema.HashString, flattenStorageAccountVirtualNetworks(input.VirtualNetworkRules))
-	networkRules["bypass"] = schema.NewSet(schema.HashString, flattenStorageAccountBypass(input.Bypass))
-	networkRules["default_action"] = string(input.DefaultAction)
+	networkRules["bypass"] = schema.NewSet(schema.HashString, flattenStorageAccountBypass(*input.Bypass))
+	networkRules["default_action"] = string(*input.DefaultAction)
 
 	return []interface{}{networkRules}
 }
 
-func flattenStorageAccountIPRules(input *[]storage.IPRule) []interface{} {
+func flattenStorageAccountIPRules(input *[]armstorage.IPRule) []interface{} {
 	if input == nil {
 		return []interface{}{}
 	}
@@ -1719,7 +1741,7 @@ func flattenStorageAccountIPRules(input *[]storage.IPRule) []interface{} {
 	return ipRules
 }
 
-func flattenStorageAccountVirtualNetworks(input *[]storage.VirtualNetworkRule) []interface{} {
+func flattenStorageAccountVirtualNetworks(input *[]armstorage.VirtualNetworkRule) []interface{} {
 	if input == nil {
 		return []interface{}{}
 	}
@@ -1736,18 +1758,18 @@ func flattenStorageAccountVirtualNetworks(input *[]storage.VirtualNetworkRule) [
 	return virtualNetworks
 }
 
-func flattenBlobProperties(input storage.BlobServiceProperties) []interface{} {
-	if input.BlobServicePropertiesProperties == nil {
+func flattenBlobProperties(input armstorage.BlobServiceProperties) []interface{} {
+	if input.BlobServiceProperties == nil {
 		return []interface{}{}
 	}
 
 	flattenedCorsRules := make([]interface{}, 0)
-	if corsRules := input.BlobServicePropertiesProperties.Cors; corsRules != nil {
+	if corsRules := input.BlobServiceProperties.Cors; corsRules != nil {
 		flattenedCorsRules = flattenBlobPropertiesCorsRule(corsRules)
 	}
 
 	flattenedDeletePolicy := make([]interface{}, 0)
-	if deletePolicy := input.BlobServicePropertiesProperties.DeleteRetentionPolicy; deletePolicy != nil {
+	if deletePolicy := input.BlobServiceProperties.DeleteRetentionPolicy; deletePolicy != nil {
 		flattenedDeletePolicy = flattenBlobPropertiesDeleteRetentionPolicy(deletePolicy)
 	}
 
@@ -1763,7 +1785,7 @@ func flattenBlobProperties(input storage.BlobServiceProperties) []interface{} {
 	}
 }
 
-func flattenBlobPropertiesCorsRule(input *storage.CorsRules) []interface{} {
+func flattenBlobPropertiesCorsRule(input *armstorage.CorsRules) []interface{} {
 	corsRules := make([]interface{}, 0)
 
 	if input == nil || input.CorsRules == nil {
@@ -1777,8 +1799,10 @@ func flattenBlobPropertiesCorsRule(input *storage.CorsRules) []interface{} {
 		}
 
 		allowedMethods := make([]string, 0)
-		if corsRule.AllowedMethods != nil {
-			allowedMethods = *corsRule.AllowedMethods
+		for _, i := range *corsRule.AllowedMethods {
+			if i != "" {
+				allowedMethods = append(allowedMethods, string(i))
+			}
 		}
 
 		allowedHeaders := make([]string, 0)
@@ -1808,7 +1832,7 @@ func flattenBlobPropertiesCorsRule(input *storage.CorsRules) []interface{} {
 	return corsRules
 }
 
-func flattenBlobPropertiesDeleteRetentionPolicy(input *storage.DeleteRetentionPolicy) []interface{} {
+func flattenBlobPropertiesDeleteRetentionPolicy(input *armstorage.DeleteRetentionPolicy) []interface{} {
 	deleteRetentionPolicy := make([]interface{}, 0)
 
 	if input == nil {
@@ -1947,7 +1971,7 @@ func flattenStaticWebsiteProperties(input accounts.GetServicePropertiesResult) [
 	return []interface{}{}
 }
 
-func flattenStorageAccountBypass(input storage.Bypass) []interface{} {
+func flattenStorageAccountBypass(input armstorage.Bypass) []interface{} {
 	bypassValues := strings.Split(string(input), ", ")
 	bypass := make([]interface{}, len(bypassValues))
 
@@ -1968,16 +1992,16 @@ func ValidateStorageAccountName(v interface{}, _ string) (warnings []string, err
 	return warnings, errors
 }
 
-func expandAzureRmStorageAccountIdentity(d *schema.ResourceData) *storage.Identity {
+func expandAzureRmStorageAccountIdentity(d *schema.ResourceData) *armstorage.IDentity {
 	identities := d.Get("identity").([]interface{})
 	identity := identities[0].(map[string]interface{})
 	identityType := identity["type"].(string)
-	return &storage.Identity{
+	return &armstorage.IDentity{
 		Type: &identityType,
 	}
 }
 
-func flattenAzureRmStorageAccountIdentity(identity *storage.Identity) []interface{} {
+func flattenAzureRmStorageAccountIdentity(identity *armstorage.IDentity) []interface{} {
 	if identity == nil {
 		return make([]interface{}, 0)
 	}
@@ -2015,7 +2039,7 @@ func getBlobConnectionString(blobEndpoint *string, acctName *string, acctKey *st
 	return fmt.Sprintf("DefaultEndpointsProtocol=https;BlobEndpoint=%s;AccountName=%s;AccountKey=%s", endpoint, name, key)
 }
 
-func flattenAndSetAzureRmStorageAccountPrimaryEndpoints(d *schema.ResourceData, primary *storage.Endpoints) error {
+func flattenAndSetAzureRmStorageAccountPrimaryEndpoints(d *schema.ResourceData, primary *armstorage.Endpoints) error {
 	if primary == nil {
 		return fmt.Errorf("primary endpoints should not be empty")
 	}
@@ -2042,7 +2066,7 @@ func flattenAndSetAzureRmStorageAccountPrimaryEndpoints(d *schema.ResourceData, 
 	return nil
 }
 
-func flattenAndSetAzureRmStorageAccountSecondaryEndpoints(d *schema.ResourceData, secondary *storage.Endpoints) error {
+func flattenAndSetAzureRmStorageAccountSecondaryEndpoints(d *schema.ResourceData, secondary *armstorage.Endpoints) error {
 	if secondary == nil {
 		return nil
 	}

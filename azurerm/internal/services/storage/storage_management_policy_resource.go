@@ -7,7 +7,7 @@ import (
 
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -155,34 +155,30 @@ func resourceStorageManagementPolicyCreateOrUpdate(d *schema.ResourceData, meta 
 	resourceGroupName := rid.ResourceGroup
 	storageAccountName := rid.Path["storageAccounts"]
 
-	name := "default" // The name of the Storage Account Management Policy. It should always be 'default' (from https://docs.microsoft.com/en-us/rest/api/storagerp/managementpolicies/createorupdate)
-
-	parameters := storage.ManagementPolicy{
-		Name: &name,
-	}
+	parameters := armstorage.ManagementPolicy{}
 
 	armRules, err := expandStorageManagementPolicyRules(d)
 	if err != nil {
 		return fmt.Errorf("Error expanding Azure Storage Management Policy Rules %q: %+v", storageAccountId, err)
 	}
 
-	parameters.ManagementPolicyProperties = &storage.ManagementPolicyProperties{
-		Policy: &storage.ManagementPolicySchema{
+	parameters.Properties = &armstorage.ManagementPolicyProperties{
+		Policy: &armstorage.ManagementPolicySchema{
 			Rules: armRules,
 		},
 	}
 
-	result, err := client.CreateOrUpdate(ctx, resourceGroupName, storageAccountName, parameters)
+	result, err := client.CreateOrUpdate(ctx, resourceGroupName, storageAccountName, armstorage.ManagementPolicyNameDefault, parameters, nil)
 	if err != nil {
 		return fmt.Errorf("Error creating Azure Storage Management Policy %q: %+v", storageAccountId, err)
 	}
 
-	result, err = client.Get(ctx, resourceGroupName, storageAccountName)
+	result, err = client.Get(ctx, resourceGroupName, storageAccountName, armstorage.ManagementPolicyNameDefault, nil)
 	if err != nil {
 		return fmt.Errorf("Error getting created Azure Storage Management Policy %q: %+v", storageAccountId, err)
 	}
 
-	d.SetId(*result.ID)
+	d.SetId(*result.ManagementPolicy.ID)
 
 	return resourceStorageManagementPolicyRead(d, meta)
 }
@@ -201,7 +197,7 @@ func resourceStorageManagementPolicyRead(d *schema.ResourceData, meta interface{
 	resourceGroupName := rid.ResourceGroup
 	storageAccountName := rid.Path["storageAccounts"]
 
-	result, err := client.Get(ctx, resourceGroupName, storageAccountName)
+	result, err := client.Get(ctx, resourceGroupName, storageAccountName, armstorage.ManagementPolicyNameDefault, nil)
 	if err != nil {
 		return err
 	}
@@ -210,8 +206,8 @@ func resourceStorageManagementPolicyRead(d *schema.ResourceData, meta interface{
 	storageAccountID := "/subscriptions/" + rid.SubscriptionID + "/resourceGroups/" + rid.ResourceGroup + "/providers/" + rid.Provider + "/storageAccounts/" + storageAccountName
 	d.Set("storage_account_id", storageAccountID)
 
-	if policy := result.Policy; policy != nil {
-		policy := result.Policy
+	if policy := result.ManagementPolicy.Properties.Policy; policy != nil {
+		policy := result.ManagementPolicy.Properties.Policy
 		if rules := policy.Rules; rules != nil {
 			if err := d.Set("rule", flattenStorageManagementPolicyRules(policy.Rules)); err != nil {
 				return fmt.Errorf("Error flattening `rule`: %+v", err)
@@ -236,15 +232,15 @@ func resourceStorageManagementPolicyDelete(d *schema.ResourceData, meta interfac
 	resourceGroupName := rid.ResourceGroup
 	storageAccountName := rid.Path["storageAccounts"]
 
-	if _, err = client.Delete(ctx, resourceGroupName, storageAccountName); err != nil {
+	if _, err = client.Delete(ctx, resourceGroupName, storageAccountName, armstorage.ManagementPolicyNameDefault, nil); err != nil {
 		return err
 	}
 	return nil
 }
 
 // nolint unparam
-func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]storage.ManagementPolicyRule, error) {
-	var result []storage.ManagementPolicyRule
+func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]armstorage.ManagementPolicyRule, error) {
+	var result []armstorage.ManagementPolicyRule
 
 	rules := d.Get("rule").([]interface{})
 
@@ -256,14 +252,14 @@ func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]storage.Mana
 	return &result, nil
 }
 
-func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) storage.ManagementPolicyRule {
+func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) armstorage.ManagementPolicyRule {
 	name := d.Get(fmt.Sprintf("rule.%d.name", ruleIndex)).(string)
 	enabled := d.Get(fmt.Sprintf("rule.%d.enabled", ruleIndex)).(bool)
-	typeVal := "Lifecycle"
+	typeVal := armstorage.RuleTypeLifecycle
 
-	definition := storage.ManagementPolicyDefinition{
-		Filters: &storage.ManagementPolicyFilter{},
-		Actions: &storage.ManagementPolicyAction{},
+	definition := armstorage.ManagementPolicyDefinition{
+		Filters: &armstorage.ManagementPolicyFilter{},
+		Actions: &armstorage.ManagementPolicyAction{},
 	}
 	filtersRef := d.Get(fmt.Sprintf("rule.%d.filters", ruleIndex)).([]interface{})
 	if len(filtersRef) == 1 {
@@ -291,25 +287,25 @@ func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) st
 	}
 	if _, ok := d.GetOk(fmt.Sprintf("rule.%d.actions", ruleIndex)); ok {
 		if _, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.base_blob", ruleIndex)); ok {
-			baseBlob := &storage.ManagementPolicyBaseBlob{}
+			baseBlob := &armstorage.ManagementPolicyBaseBlob{}
 			if v, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.base_blob.0.tier_to_cool_after_days_since_modification_greater_than", ruleIndex)); ok {
 				if v != nil {
-					baseBlob.TierToCool = &storage.DateAfterModification{
-						DaysAfterModificationGreaterThan: utils.Float(float64(v.(int))),
+					baseBlob.TierToCool = &armstorage.DateAfterModification{
+						DaysAfterModificationGreaterThan: utils.Float32(float32(v.(int))),
 					}
 				}
 			}
 			if v, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.base_blob.0.tier_to_archive_after_days_since_modification_greater_than", ruleIndex)); ok {
 				if v != nil {
-					baseBlob.TierToArchive = &storage.DateAfterModification{
-						DaysAfterModificationGreaterThan: utils.Float(float64(v.(int))),
+					baseBlob.TierToArchive = &armstorage.DateAfterModification{
+						DaysAfterModificationGreaterThan: utils.Float32(float32(v.(int))),
 					}
 				}
 			}
 			if v, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.base_blob.0.delete_after_days_since_modification_greater_than", ruleIndex)); ok {
 				if v != nil {
-					baseBlob.Delete = &storage.DateAfterModification{
-						DaysAfterModificationGreaterThan: utils.Float(float64(v.(int))),
+					baseBlob.Delete = &armstorage.DateAfterModification{
+						DaysAfterModificationGreaterThan: utils.Float32(float32(v.(int))),
 					}
 				}
 			}
@@ -317,16 +313,16 @@ func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) st
 		}
 
 		if _, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.snapshot", ruleIndex)); ok {
-			snapshot := &storage.ManagementPolicySnapShot{}
+			snapshot := &armstorage.ManagementPolicySnapShot{}
 			if v, ok := d.GetOk(fmt.Sprintf("rule.%d.actions.0.snapshot.0.delete_after_days_since_creation_greater_than", ruleIndex)); ok {
-				v2 := float64(v.(int))
-				snapshot.Delete = &storage.DateAfterCreation{DaysAfterCreationGreaterThan: &v2}
+				v2 := float32(v.(int))
+				snapshot.Delete = &armstorage.DateAfterCreation{DaysAfterCreationGreaterThan: &v2}
 			}
 			definition.Actions.Snapshot = snapshot
 		}
 	}
 
-	rule := storage.ManagementPolicyRule{
+	rule := armstorage.ManagementPolicyRule{
 		Name:       &name,
 		Enabled:    &enabled,
 		Type:       &typeVal,
@@ -335,7 +331,7 @@ func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) st
 	return rule
 }
 
-func flattenStorageManagementPolicyRules(armRules *[]storage.ManagementPolicyRule) []interface{} {
+func flattenStorageManagementPolicyRules(armRules *[]armstorage.ManagementPolicyRule) []interface{} {
 	rules := make([]interface{}, 0)
 	if armRules == nil {
 		return rules

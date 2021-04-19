@@ -117,7 +117,7 @@ func resourceSnapshotCreateUpdate(d *schema.ResourceData, meta interface{}) erro
 	snapshot := armcompute.Snapshot{
 		Resource: armcompute.Resource{
 			Location: utils.String(location),
-			Tags: tags.Track2Expand(t),
+			Tags:     tags.Track2Expand(t),
 		},
 		Properties: &armcompute.SnapshotProperties{
 			CreationData: &armcompute.CreationData{
@@ -191,7 +191,7 @@ func resourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 
 		return fmt.Errorf("Error making Read request on Snapshot %q: %+v", name, err)
 	}
-	
+
 	snapshot := resp.Snapshot
 	d.Set("name", snapshot.Name)
 	d.Set("resource_group_name", resourceGroup)

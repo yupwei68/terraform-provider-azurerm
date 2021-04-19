@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -51,10 +51,10 @@ func resourceStorageAccountNetworkRules() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						string(storage.AzureServices),
-						string(storage.Logging),
-						string(storage.Metrics),
-						string(storage.None),
+						string(armstorage.BypassAzureServices),
+						string(armstorage.BypassLogging),
+						string(armstorage.BypassMetrics),
+						string(armstorage.BypassNone),
 					}, false),
 				},
 				Set: schema.HashString,
@@ -87,8 +87,8 @@ func resourceStorageAccountNetworkRules() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(storage.DefaultActionAllow),
-					string(storage.DefaultActionDeny),
+					string(armstorage.DefaultActionAllow),
+					string(armstorage.DefaultActionDeny),
 				}, false),
 			},
 		},
@@ -106,9 +106,9 @@ func resourceStorageAccountNetworkRulesCreateUpdate(d *schema.ResourceData, meta
 	locks.ByName(storageAccountName, storageAccountResourceName)
 	defer locks.UnlockByName(storageAccountName, storageAccountResourceName)
 
-	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, "")
+	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q (Resource Group %q) was not found", storageAccountName, resourceGroup)
 		}
 
@@ -116,36 +116,37 @@ func resourceStorageAccountNetworkRulesCreateUpdate(d *schema.ResourceData, meta
 	}
 
 	if d.IsNewResource() {
-		if storageAccount.AccountProperties == nil {
+		if storageAccount.StorageAccount.Properties == nil {
 			return fmt.Errorf("Error retrieving Storage Account %q (Resource Group %q): `properties` was nil", storageAccountName, resourceGroup)
 		}
 
-		if checkForNonDefaultStorageAccountNetworkRule(storageAccount.AccountProperties.NetworkRuleSet) {
-			return tf.ImportAsExistsError("azurerm_storage_account_network_rule", *storageAccount.ID)
+		if checkForNonDefaultStorageAccountNetworkRule(storageAccount.StorageAccount.Properties.NetworkRuleSet) {
+			return tf.ImportAsExistsError("azurerm_storage_account_network_rule", *storageAccount.StorageAccount.ID)
 		}
 	}
 
-	rules := storageAccount.NetworkRuleSet
+	rules := storageAccount.StorageAccount.Properties.NetworkRuleSet
 	if rules == nil {
-		rules = &storage.NetworkRuleSet{}
+		rules = &armstorage.NetworkRuleSet{}
 	}
 
-	rules.DefaultAction = storage.DefaultAction(d.Get("default_action").(string))
+	defaultAction := armstorage.DefaultAction(d.Get("default_action").(string))
+	rules.DefaultAction = &defaultAction
 	rules.Bypass = expandStorageAccountNetworkRuleBypass(d.Get("bypass").(*schema.Set).List())
 	rules.IPRules = expandStorageAccountNetworkRuleIpRules(d.Get("ip_rules").(*schema.Set).List())
 	rules.VirtualNetworkRules = expandStorageAccountNetworkRuleVirtualRules(d.Get("virtual_network_subnet_ids").(*schema.Set).List())
 
-	opts := storage.AccountUpdateParameters{
-		AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
+	opts := armstorage.StorageAccountUpdateParameters{
+		Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
 			NetworkRuleSet: rules,
 		},
 	}
 
-	if _, err := client.Update(ctx, resourceGroup, storageAccountName, opts); err != nil {
+	if _, err := client.Update(ctx, resourceGroup, storageAccountName, opts, nil); err != nil {
 		return fmt.Errorf("Error updating Azure Storage Account Network Rules %q (Resource Group %q): %+v", storageAccountName, resourceGroup, err)
 	}
 
-	d.SetId(*storageAccount.ID)
+	d.SetId(*storageAccount.StorageAccount.ID)
 
 	return resourceStorageAccountNetworkRulesRead(d, meta)
 }
@@ -163,7 +164,7 @@ func resourceStorageAccountNetworkRulesRead(d *schema.ResourceData, meta interfa
 	resourceGroup := id.ResourceGroup
 	storageAccountName := id.Path["storageAccounts"]
 
-	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, "")
+	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, nil)
 	if err != nil {
 		return fmt.Errorf("Error reading Storage Account Network Rules %q (Resource Group %q): %+v", storageAccountName, resourceGroup, err)
 	}
@@ -171,17 +172,17 @@ func resourceStorageAccountNetworkRulesRead(d *schema.ResourceData, meta interfa
 	d.Set("storage_account_name", storageAccountName)
 	d.Set("resource_group_name", resourceGroup)
 
-	if rules := storageAccount.NetworkRuleSet; rules != nil {
-		if err := d.Set("ip_rules", schema.NewSet(schema.HashString, flattenStorageAccountIPRules(rules.IPRules))); err != nil {
+	if rules := &storageAccount.StorageAccount.Properties.NetworkRuleSet; rules != nil {
+		if err := d.Set("ip_rules", schema.NewSet(schema.HashString, flattenStorageAccountIPRules((*rules).IPRules))); err != nil {
 			return fmt.Errorf("Error setting `ip_rules`: %+v", err)
 		}
-		if err := d.Set("virtual_network_subnet_ids", schema.NewSet(schema.HashString, flattenStorageAccountVirtualNetworks(rules.VirtualNetworkRules))); err != nil {
+		if err := d.Set("virtual_network_subnet_ids", schema.NewSet(schema.HashString, flattenStorageAccountVirtualNetworks((*rules).VirtualNetworkRules))); err != nil {
 			return fmt.Errorf("Error setting `virtual_network_subnet_ids`: %+v", err)
 		}
-		if err := d.Set("bypass", schema.NewSet(schema.HashString, flattenStorageAccountBypass(rules.Bypass))); err != nil {
+		if err := d.Set("bypass", schema.NewSet(schema.HashString, flattenStorageAccountBypass(*(*rules).Bypass))); err != nil {
 			return fmt.Errorf("Error setting `bypass`: %+v", err)
 		}
-		d.Set("default_action", string(rules.DefaultAction))
+		d.Set("default_action", string(*(*rules).DefaultAction))
 	}
 
 	return nil
@@ -203,30 +204,32 @@ func resourceStorageAccountNetworkRulesDelete(d *schema.ResourceData, meta inter
 	locks.ByName(storageAccountName, storageAccountResourceName)
 	defer locks.UnlockByName(storageAccountName, storageAccountResourceName)
 
-	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, "")
+	storageAccount, err := client.GetProperties(ctx, resourceGroup, storageAccountName, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(storageAccount.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Account %q (Resource Group %q) was not found", storageAccountName, resourceGroup)
 		}
 
 		return fmt.Errorf("Error loading Storage Account %q (Resource Group %q): %+v", storageAccountName, resourceGroup, err)
 	}
 
-	if storageAccount.NetworkRuleSet == nil {
+	if storageAccount.StorageAccount.Properties.NetworkRuleSet == nil {
 		return nil
 	}
 
 	// We can't delete a network rule set so we'll just update it back to the default instead
-	opts := storage.AccountUpdateParameters{
-		AccountPropertiesUpdateParameters: &storage.AccountPropertiesUpdateParameters{
-			NetworkRuleSet: &storage.NetworkRuleSet{
-				Bypass:        storage.AzureServices,
-				DefaultAction: storage.DefaultActionAllow,
+	azureService := armstorage.BypassAzureServices
+	defaultActionAllow := armstorage.DefaultActionAllow
+	opts := armstorage.StorageAccountUpdateParameters{
+		Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
+			NetworkRuleSet: &armstorage.NetworkRuleSet{
+				Bypass:        &azureService,
+				DefaultAction: &defaultActionAllow,
 			},
 		},
 	}
 
-	if _, err := client.Update(ctx, resourceGroup, storageAccountName, opts); err != nil {
+	if _, err := client.Update(ctx, resourceGroup, storageAccountName, opts, nil); err != nil {
 		return fmt.Errorf("Error deleting Azure Storage Account Network Rule %q (Resource Group %q): %+v", storageAccountName, resourceGroup, err)
 	}
 
@@ -234,37 +237,38 @@ func resourceStorageAccountNetworkRulesDelete(d *schema.ResourceData, meta inter
 }
 
 // To make sure that someone isn't overriding their existing network rules, we'll check for a non default network rule
-func checkForNonDefaultStorageAccountNetworkRule(rule *storage.NetworkRuleSet) bool {
+func checkForNonDefaultStorageAccountNetworkRule(rule *armstorage.NetworkRuleSet) bool {
 	if rule == nil {
 		return false
 	}
 
 	if (rule.IPRules != nil && len(*rule.IPRules) != 0) ||
 		(rule.VirtualNetworkRules != nil && len(*rule.VirtualNetworkRules) != 0) ||
-		rule.Bypass != "AzureServices" || rule.DefaultAction != "Allow" {
+		*rule.Bypass != "AzureServices" || *rule.DefaultAction != "Allow" {
 		return true
 	}
 
 	return false
 }
 
-func expandStorageAccountNetworkRuleBypass(bypass []interface{}) storage.Bypass {
+func expandStorageAccountNetworkRuleBypass(bypass []interface{}) *armstorage.Bypass {
 	var bypassValues []string
 	for _, bypassConfig := range bypass {
 		bypassValues = append(bypassValues, bypassConfig.(string))
 	}
 
-	return storage.Bypass(strings.Join(bypassValues, ", "))
+	result := armstorage.Bypass(strings.Join(bypassValues, ", "))
+	return &result
 }
 
-func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]storage.IPRule {
-	ipRules := make([]storage.IPRule, len(ipRulesInfo))
+func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]armstorage.IPRule {
+	ipRules := make([]armstorage.IPRule, len(ipRulesInfo))
 
 	for i, ipRuleConfig := range ipRulesInfo {
 		attrs := ipRuleConfig.(string)
-		ipRule := storage.IPRule{
+		ipRule := armstorage.IPRule{
 			IPAddressOrRange: utils.String(attrs),
-			Action:           storage.Allow,
+			Action:           utils.String("Allow"),
 		}
 		ipRules[i] = ipRule
 	}
@@ -272,14 +276,14 @@ func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]storag
 	return &ipRules
 }
 
-func expandStorageAccountNetworkRuleVirtualRules(virtualNetworkInfo []interface{}) *[]storage.VirtualNetworkRule {
-	virtualNetworks := make([]storage.VirtualNetworkRule, len(virtualNetworkInfo))
+func expandStorageAccountNetworkRuleVirtualRules(virtualNetworkInfo []interface{}) *[]armstorage.VirtualNetworkRule {
+	virtualNetworks := make([]armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
 
 	for i, virtualNetworkConfig := range virtualNetworkInfo {
 		attrs := virtualNetworkConfig.(string)
-		virtualNetwork := storage.VirtualNetworkRule{
+		virtualNetwork := armstorage.VirtualNetworkRule{
 			VirtualNetworkResourceID: utils.String(attrs),
-			Action:                   storage.Allow,
+			Action:                   utils.String("Allow"),
 		}
 		virtualNetworks[i] = virtualNetwork
 	}

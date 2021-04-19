@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/storage/2019-06-01/armstorage"
 	"github.com/Azure/azure-sdk-for-go/services/storagesync/mgmt/2020-03-01/storagesync"
 	"github.com/Azure/go-autorest/autorest"
 	az "github.com/Azure/go-autorest/autorest/azure"
@@ -24,13 +24,13 @@ import (
 )
 
 type Client struct {
-	AccountsClient           *storage.AccountsClient
+	AccountsClient           *armstorage.StorageAccountsClient
 	FileSystemsClient        *filesystems.Client
 	ADLSGen2PathsClient      *paths.Client
-	ManagementPoliciesClient *storage.ManagementPoliciesClient
-	BlobServicesClient       *storage.BlobServicesClient
+	ManagementPoliciesClient *armstorage.ManagementPoliciesClient
+	BlobServicesClient       *armstorage.BlobServicesClient
 	CloudEndpointsClient     *storagesync.CloudEndpointsClient
-	EncryptionScopesClient   *storage.EncryptionScopesClient
+	EncryptionScopesClient   *armstorage.EncryptionScopesClient
 	Environment              az.Environment
 	SyncServiceClient        *storagesync.ServicesClient
 	SyncGroupsClient         *storagesync.SyncGroupsClient
@@ -41,26 +41,14 @@ type Client struct {
 }
 
 func NewClient(options *common.ClientOptions) *Client {
-	accountsClient := storage.NewAccountsClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
-	options.ConfigureClient(&accountsClient.Client, options.ResourceManagerAuthorizer)
-
 	fileSystemsClient := filesystems.NewWithEnvironment(options.Environment)
 	options.ConfigureClient(&fileSystemsClient.Client, options.StorageAuthorizer)
 
 	adlsGen2PathsClient := paths.NewWithEnvironment(options.Environment)
 	options.ConfigureClient(&adlsGen2PathsClient.Client, options.StorageAuthorizer)
 
-	managementPoliciesClient := storage.NewManagementPoliciesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
-	options.ConfigureClient(&managementPoliciesClient.Client, options.ResourceManagerAuthorizer)
-
-	blobServicesClient := storage.NewBlobServicesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
-	options.ConfigureClient(&blobServicesClient.Client, options.ResourceManagerAuthorizer)
-
 	cloudEndpointsClient := storagesync.NewCloudEndpointsClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
 	options.ConfigureClient(&cloudEndpointsClient.Client, options.ResourceManagerAuthorizer)
-
-	encryptionScopesClient := storage.NewEncryptionScopesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
-	options.ConfigureClient(&encryptionScopesClient.Client, options.ResourceManagerAuthorizer)
 
 	syncServiceClient := storagesync.NewServicesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
 	options.ConfigureClient(&syncServiceClient.Client, options.ResourceManagerAuthorizer)
@@ -71,13 +59,13 @@ func NewClient(options *common.ClientOptions) *Client {
 	// TODO: switch Storage Containers to using the storage.BlobContainersClient
 	// (which should fix #2977) when the storage clients have been moved in here
 	client := Client{
-		AccountsClient:           &accountsClient,
+		AccountsClient:           armstorage.NewStorageAccountsClient(options.ResourceManagerConnection, options.SubscriptionId),
 		FileSystemsClient:        &fileSystemsClient,
 		ADLSGen2PathsClient:      &adlsGen2PathsClient,
-		ManagementPoliciesClient: &managementPoliciesClient,
-		BlobServicesClient:       &blobServicesClient,
+		ManagementPoliciesClient: armstorage.NewManagementPoliciesClient(options.ResourceManagerConnection, options.SubscriptionId),
+		BlobServicesClient:       armstorage.NewBlobServicesClient(options.ResourceManagerConnection, options.SubscriptionId),
 		CloudEndpointsClient:     &cloudEndpointsClient,
-		EncryptionScopesClient:   &encryptionScopesClient,
+		EncryptionScopesClient:   armstorage.NewEncryptionScopesClient(options.ResourceManagerConnection, options.SubscriptionId),
 		Environment:              options.Environment,
 		SubscriptionId:           options.SubscriptionId,
 		SyncServiceClient:        &syncServiceClient,

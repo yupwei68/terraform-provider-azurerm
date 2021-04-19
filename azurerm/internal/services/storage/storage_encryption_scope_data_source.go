@@ -57,9 +57,9 @@ func dataSourceStorageEncryptionScopeRead(d *schema.ResourceData, meta interface
 		return err
 	}
 
-	resp, err := client.Get(ctx, accountId.ResourceGroup, accountId.Name, name)
+	resp, err := client.Get(ctx, accountId.ResourceGroup, accountId.Name, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q) was not found", name, accountId.Name, accountId.ResourceGroup)
 		}
 
@@ -68,8 +68,8 @@ func dataSourceStorageEncryptionScopeRead(d *schema.ResourceData, meta interface
 
 	d.SetId(parse.NewEncryptionScopeID(accountId.SubscriptionId, accountId.ResourceGroup, accountId.Name, name).ID())
 
-	if props := resp.EncryptionScopeProperties; props != nil {
-		d.Set("source", flattenEncryptionScopeSource(props.Source))
+	if props := resp.EncryptionScope.EncryptionScopeProperties; props != nil {
+		d.Set("source", flattenEncryptionScopeSource(*props.Source))
 		var keyId string
 		if kv := props.KeyVaultProperties; kv != nil {
 			if kv.KeyURI != nil {
