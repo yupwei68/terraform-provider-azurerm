@@ -714,7 +714,7 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 
 	// AccountTier must be Premium for FileStorage
 	if accountKind == string(armstorage.KindFileStorage) {
-		if *parameters.SKU.Tier == armstorage.SKUTierStandard {
+		if parameters.SKU != nil && *parameters.SKU.Tier == armstorage.SKUTierStandard {
 			return fmt.Errorf("A `account_tier` of `Standard` is not supported for FileStorage accounts.")
 		}
 	}
