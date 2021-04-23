@@ -275,7 +275,7 @@ func TestAccCosmosDBAccount_complete_mongo(t *testing.T) {
 				checkAccCosmosDBAccount_basic(data, documentdb.Eventual, 3),
 			),
 		},
-		data.ImportStep("connector_offer"),
+		data.ImportStep(),
 	})
 }
 
@@ -298,7 +298,7 @@ func testAccCosmosDBAccount_completeWith(t *testing.T, kind documentdb.DatabaseA
 				checkAccCosmosDBAccount_basic(data, documentdb.Eventual, 3),
 			),
 		},
-		data.ImportStep("connector_offer"),
+		data.ImportStep(),
 	})
 }
 
@@ -380,7 +380,7 @@ func TestAccCosmosDBAccount_update_mongo(t *testing.T) {
 				checkAccCosmosDBAccount_basic(data, documentdb.Eventual, 3),
 			),
 		},
-		data.ImportStep("connector_offer"),
+		data.ImportStep(),
 		{
 			Config: r.completeUpdatedMongoDB(data, documentdb.Eventual),
 			Check: resource.ComposeAggregateTestCheckFunc(
@@ -424,7 +424,7 @@ func testAccCosmosDBAccount_updateWith(t *testing.T, kind documentdb.DatabaseAcc
 				checkAccCosmosDBAccount_basic(data, documentdb.Eventual, 3),
 			),
 		},
-		data.ImportStep("connector_offer"),
+		data.ImportStep(),
 		{
 			Config: r.completeUpdated(data, kind, documentdb.Eventual),
 			Check: resource.ComposeAggregateTestCheckFunc(
@@ -1046,7 +1046,6 @@ resource "azurerm_cosmosdb_account" "test" {
     max_age_in_seconds = "500"
   }
 
-  connector_offer                    = "Small"
   enable_key_based_meta_write_access = false
   enable_cassandra_connector         = false
   network_acl_bypass                 = "AzureServices"
@@ -1109,7 +1108,6 @@ resource "azurerm_cosmosdb_account" "test" {
     allowed_methods    = "GET,PUT,PATCH"
     max_age_in_seconds = "500"
   }
-  connector_offer                    = "Small"
   enable_key_based_meta_write_access = false
   enable_cassandra_connector         = false
   network_acl_bypass                 = "AzureServices"

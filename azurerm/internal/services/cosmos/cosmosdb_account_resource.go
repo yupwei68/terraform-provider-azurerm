@@ -334,14 +334,6 @@ func resourceCosmosDbAccount() *schema.Resource {
 				},
 			},
 
-			"connector_offer": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(documentdb.Small),
-				}, false),
-			},
-
 			"cors_rule": common.SchemaCorsRule(true),
 
 			"enable_key_based_meta_write_access": {
@@ -546,7 +538,6 @@ func resourceCosmosDbAccountCreate(d *schema.ResourceData, meta interface{}) err
 			EnableMultipleWriteLocations:       utils.Bool(enableMultipleWriteLocations),
 			PublicNetworkAccess:                publicNetworkAccess,
 			EnableAnalyticalStorage:            utils.Bool(enableAnalyticalStorage),
-			ConnectorOffer:                     documentdb.ConnectorOffer(d.Get("connector_offer").(string)),
 			Cors:                               common.ExpandCosmosCorsRule(d.Get("cors_rule").([]interface{})),
 			DisableKeyBasedMetadataWriteAccess: utils.Bool(!d.Get("enable_key_based_meta_write_access").(bool)),
 			EnableCassandraConnector:           utils.Bool(d.Get("enable_cassandra_connector").(bool)),
@@ -775,10 +766,6 @@ func resourceCosmosDbAccountUpdate(d *schema.ResourceData, meta interface{}) err
 		account.DatabaseAccountUpdateProperties.BackupPolicy = policy
 	}
 
-	if d.HasChange("connector_offer") {
-		account.DatabaseAccountUpdateProperties.ConnectorOffer = documentdb.ConnectorOffer(d.Get("connector_offer").(string))
-	}
-
 	if d.HasChange("cors_rule") {
 		account.DatabaseAccountUpdateProperties.Cors = common.ExpandCosmosCorsRule(d.Get("cors_rule").([]interface{}))
 	}
@@ -901,7 +888,6 @@ func resourceCosmosDbAccountRead(d *schema.ResourceData, meta interface{}) error
 			return fmt.Errorf("setting `backup_policy`: %+v", err)
 		}
 
-		//d.Set("connector_offer", props.ConnectorOffer)
 		d.Set("cors_rule", common.FlattenCosmosCorsRule(props.Cors))
 		d.Set("enable_key_based_meta_write_access", !*props.DisableKeyBasedMetadataWriteAccess)
 		d.Set("enable_cassandra_connector", props.EnableCassandraConnector)
