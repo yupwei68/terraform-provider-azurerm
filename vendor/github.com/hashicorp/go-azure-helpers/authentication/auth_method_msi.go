@@ -2,6 +2,8 @@ package authentication
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"log"
 	"os"
 
@@ -16,6 +18,26 @@ type managedServiceIdentityAuth struct {
 }
 
 func (a managedServiceIdentityAuth) build(b Builder) (authMethod, error) {
+	msiEndpoint := b.MsiEndpoint
+	if msiEndpoint == "" {
+		//nolint:SA1019
+		ep, err := adal.GetMSIVMEndpoint()
+		if err != nil {
+			return nil, fmt.Errorf("determining MSI Endpoint: ensure the VM has MSI enabled, or configure the MSI Endpoint. Error: %s", err)
+		}
+		msiEndpoint = ep
+	}
+
+	log.Printf("[DEBUG] Using MSI msiEndpoint %q", msiEndpoint)
+
+	auth := managedServiceIdentityAuth{
+		msiEndpoint: msiEndpoint,
+		clientID:    b.ClientID,
+	}
+	return auth, nil
+}
+
+func (a managedServiceIdentityAuth) buildAuthMethodTrack2(b Builder) (authMethodTrack2, error) {
 	msiEndpoint := b.MsiEndpoint
 	if msiEndpoint == "" {
 		//nolint:SA1019
@@ -72,6 +94,12 @@ func (a managedServiceIdentityAuth) getAuthorizationToken(sender autorest.Sender
 	spt.SetSender(sender)
 	auth := autorest.NewBearerAuthorizer(spt)
 	return auth, nil
+}
+
+func (a managedServiceIdentityAuth) getTokenCredential(azureActiveDirectoryEndpoint,endpoint string) (azcore.TokenCredential, error) {
+	log.Printf("[DEBUG] getAuthorizationToken with MSI msiEndpoint %q, ClientID %q for msiEndpoint %q", a.msiEndpoint, a.clientID, endpoint)
+
+	return azidentity.NewManagedIdentityCredential(a.clientID, &azidentity.ManagedIdentityCredentialOptions{})
 }
 
 func (a managedServiceIdentityAuth) populateConfig(c *Config) error {

@@ -239,8 +239,8 @@ func resourceStorageManagementPolicyDelete(d *schema.ResourceData, meta interfac
 }
 
 // nolint unparam
-func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]armstorage.ManagementPolicyRule, error) {
-	var result []armstorage.ManagementPolicyRule
+func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]*armstorage.ManagementPolicyRule, error) {
+	var result []*armstorage.ManagementPolicyRule
 
 	rules := d.Get("rule").([]interface{})
 
@@ -252,7 +252,7 @@ func expandStorageManagementPolicyRules(d *schema.ResourceData) (*[]armstorage.M
 	return &result, nil
 }
 
-func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) armstorage.ManagementPolicyRule {
+func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) *armstorage.ManagementPolicyRule {
 	name := d.Get(fmt.Sprintf("rule.%d.name", ruleIndex)).(string)
 	enabled := d.Get(fmt.Sprintf("rule.%d.enabled", ruleIndex)).(bool)
 	typeVal := armstorage.RuleTypeLifecycle
@@ -266,20 +266,20 @@ func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) ar
 		if filtersRef[0] != nil {
 			filterRef := filtersRef[0].(map[string]interface{})
 
-			prefixMatches := []string{}
+			prefixMatches := []*string{}
 			prefixMatchesRef := filterRef["prefix_match"].(*schema.Set)
 			if prefixMatchesRef != nil {
 				for _, prefixMatchRef := range prefixMatchesRef.List() {
-					prefixMatches = append(prefixMatches, prefixMatchRef.(string))
+					prefixMatches = append(prefixMatches, utils.String(prefixMatchRef.(string)))
 				}
 			}
 			definition.Filters.PrefixMatch = &prefixMatches
 
-			blobTypes := []string{}
+			blobTypes := []*string{}
 			blobTypesRef := filterRef["blob_types"].(*schema.Set)
 			if blobTypesRef != nil {
 				for _, blobTypeRef := range blobTypesRef.List() {
-					blobTypes = append(blobTypes, blobTypeRef.(string))
+					blobTypes = append(blobTypes, utils.String(blobTypeRef.(string)))
 				}
 			}
 			definition.Filters.BlobTypes = &blobTypes
@@ -328,10 +328,10 @@ func expandStorageManagementPolicyRule(d *schema.ResourceData, ruleIndex int) ar
 		Type:       &typeVal,
 		Definition: &definition,
 	}
-	return rule
+	return &rule
 }
 
-func flattenStorageManagementPolicyRules(armRules *[]armstorage.ManagementPolicyRule) []interface{} {
+func flattenStorageManagementPolicyRules(armRules *[]*armstorage.ManagementPolicyRule) []interface{} {
 	rules := make([]interface{}, 0)
 	if armRules == nil {
 		return rules

@@ -261,8 +261,8 @@ func expandStorageAccountNetworkRuleBypass(bypass []interface{}) *armstorage.Byp
 	return &result
 }
 
-func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]armstorage.IPRule {
-	ipRules := make([]armstorage.IPRule, len(ipRulesInfo))
+func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]*armstorage.IPRule {
+	ipRules := make([]*armstorage.IPRule, len(ipRulesInfo))
 
 	for i, ipRuleConfig := range ipRulesInfo {
 		attrs := ipRuleConfig.(string)
@@ -270,14 +270,14 @@ func expandStorageAccountNetworkRuleIpRules(ipRulesInfo []interface{}) *[]armsto
 			IPAddressOrRange: utils.String(attrs),
 			Action:           utils.String("Allow"),
 		}
-		ipRules[i] = ipRule
+		ipRules[i] = &ipRule
 	}
 
 	return &ipRules
 }
 
-func expandStorageAccountNetworkRuleVirtualRules(virtualNetworkInfo []interface{}) *[]armstorage.VirtualNetworkRule {
-	virtualNetworks := make([]armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
+func expandStorageAccountNetworkRuleVirtualRules(virtualNetworkInfo []interface{}) *[]*armstorage.VirtualNetworkRule {
+	virtualNetworks := make([]*armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
 
 	for i, virtualNetworkConfig := range virtualNetworkInfo {
 		attrs := virtualNetworkConfig.(string)
@@ -285,7 +285,7 @@ func expandStorageAccountNetworkRuleVirtualRules(virtualNetworkInfo []interface{
 			VirtualNetworkResourceID: utils.String(attrs),
 			Action:                   utils.String("Allow"),
 		}
-		virtualNetworks[i] = virtualNetwork
+		virtualNetworks[i] = &virtualNetwork
 	}
 
 	return &virtualNetworks

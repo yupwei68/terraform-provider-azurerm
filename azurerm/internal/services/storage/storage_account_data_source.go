@@ -314,7 +314,7 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 
 	if props := resp.StorageAccount.Properties; props != nil {
 		d.Set("access_tier", props.AccessTier)
-		d.Set("enable_https_traffic_only", props.EnableHTTPsTrafficOnly)
+		d.Set("enable_https_traffic_only", props.EnableHTTPSTrafficOnly)
 		d.Set("min_tls_version", string(*props.MinimumTLSVersion))
 		d.Set("is_hns_enabled", props.IsHnsEnabled)
 		d.Set("allow_blob_public_access", props.AllowBlobPublicAccess)
@@ -373,5 +373,5 @@ func dataSourceStorageAccountRead(d *schema.ResourceData, meta interface{}) erro
 		d.Set("secondary_access_key", storageAccountKeys[1].Value)
 	}
 
-	return tags.Track2FlattenAndSetString(d, resp.StorageAccount.Tags)
+	return tags.Track2FlattenAndSet(d, resp.StorageAccount.Tags)
 }

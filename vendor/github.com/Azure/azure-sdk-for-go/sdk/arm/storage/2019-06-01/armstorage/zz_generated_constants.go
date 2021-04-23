@@ -23,6 +23,7 @@ func PossibleAccessTierValues() []AccessTier {
 	}
 }
 
+// ToPtr() returns a *AccessTier pointing to the current value.
 func (c AccessTier) ToPtr() *AccessTier {
 	return &c
 }
@@ -43,6 +44,7 @@ func PossibleAccountStatusValues() []AccountStatus {
 	}
 }
 
+// ToPtr() returns a *AccountStatus pointing to the current value.
 func (c AccountStatus) ToPtr() *AccountStatus {
 	return &c
 }
@@ -67,6 +69,7 @@ func PossibleBlobRestoreProgressStatusValues() []BlobRestoreProgressStatus {
 	}
 }
 
+// ToPtr() returns a *BlobRestoreProgressStatus pointing to the current value.
 func (c BlobRestoreProgressStatus) ToPtr() *BlobRestoreProgressStatus {
 	return &c
 }
@@ -93,6 +96,7 @@ func PossibleBypassValues() []Bypass {
 	}
 }
 
+// ToPtr() returns a *Bypass pointing to the current value.
 func (c Bypass) ToPtr() *Bypass {
 	return &c
 }
@@ -100,28 +104,29 @@ func (c Bypass) ToPtr() *Bypass {
 type CorsRuleAllowedMethodsItem string
 
 const (
-	CorsRuleAllowedMethodsItemDelete  CorsRuleAllowedMethodsItem = "DELETE"
-	CorsRuleAllowedMethodsItemGet     CorsRuleAllowedMethodsItem = "GET"
-	CorsRuleAllowedMethodsItemHead    CorsRuleAllowedMethodsItem = "HEAD"
-	CorsRuleAllowedMethodsItemMerge   CorsRuleAllowedMethodsItem = "MERGE"
-	CorsRuleAllowedMethodsItemOptions CorsRuleAllowedMethodsItem = "OPTIONS"
-	CorsRuleAllowedMethodsItemPost    CorsRuleAllowedMethodsItem = "POST"
-	CorsRuleAllowedMethodsItemPut     CorsRuleAllowedMethodsItem = "PUT"
+	CorsRuleAllowedMethodsItemDELETE  CorsRuleAllowedMethodsItem = "DELETE"
+	CorsRuleAllowedMethodsItemGET     CorsRuleAllowedMethodsItem = "GET"
+	CorsRuleAllowedMethodsItemHEAD    CorsRuleAllowedMethodsItem = "HEAD"
+	CorsRuleAllowedMethodsItemMERGE   CorsRuleAllowedMethodsItem = "MERGE"
+	CorsRuleAllowedMethodsItemOPTIONS CorsRuleAllowedMethodsItem = "OPTIONS"
+	CorsRuleAllowedMethodsItemPOST    CorsRuleAllowedMethodsItem = "POST"
+	CorsRuleAllowedMethodsItemPUT     CorsRuleAllowedMethodsItem = "PUT"
 )
 
 // PossibleCorsRuleAllowedMethodsItemValues returns the possible values for the CorsRuleAllowedMethodsItem const type.
 func PossibleCorsRuleAllowedMethodsItemValues() []CorsRuleAllowedMethodsItem {
 	return []CorsRuleAllowedMethodsItem{
-		CorsRuleAllowedMethodsItemDelete,
-		CorsRuleAllowedMethodsItemGet,
-		CorsRuleAllowedMethodsItemHead,
-		CorsRuleAllowedMethodsItemMerge,
-		CorsRuleAllowedMethodsItemOptions,
-		CorsRuleAllowedMethodsItemPost,
-		CorsRuleAllowedMethodsItemPut,
+		CorsRuleAllowedMethodsItemDELETE,
+		CorsRuleAllowedMethodsItemGET,
+		CorsRuleAllowedMethodsItemHEAD,
+		CorsRuleAllowedMethodsItemMERGE,
+		CorsRuleAllowedMethodsItemOPTIONS,
+		CorsRuleAllowedMethodsItemPOST,
+		CorsRuleAllowedMethodsItemPUT,
 	}
 }
 
+// ToPtr() returns a *CorsRuleAllowedMethodsItem pointing to the current value.
 func (c CorsRuleAllowedMethodsItem) ToPtr() *CorsRuleAllowedMethodsItem {
 	return &c
 }
@@ -142,6 +147,7 @@ func PossibleDefaultActionValues() []DefaultAction {
 	}
 }
 
+// ToPtr() returns a *DefaultAction pointing to the current value.
 func (c DefaultAction) ToPtr() *DefaultAction {
 	return &c
 }
@@ -150,20 +156,21 @@ func (c DefaultAction) ToPtr() *DefaultAction {
 type DirectoryServiceOptions string
 
 const (
-	DirectoryServiceOptionsAadds DirectoryServiceOptions = "AADDS"
-	DirectoryServiceOptionsAd    DirectoryServiceOptions = "AD"
+	DirectoryServiceOptionsAADDS DirectoryServiceOptions = "AADDS"
+	DirectoryServiceOptionsAD    DirectoryServiceOptions = "AD"
 	DirectoryServiceOptionsNone  DirectoryServiceOptions = "None"
 )
 
 // PossibleDirectoryServiceOptionsValues returns the possible values for the DirectoryServiceOptions const type.
 func PossibleDirectoryServiceOptionsValues() []DirectoryServiceOptions {
 	return []DirectoryServiceOptions{
-		DirectoryServiceOptionsAadds,
-		DirectoryServiceOptionsAd,
+		DirectoryServiceOptionsAADDS,
+		DirectoryServiceOptionsAD,
 		DirectoryServiceOptionsNone,
 	}
 }
 
+// ToPtr() returns a *DirectoryServiceOptions pointing to the current value.
 func (c DirectoryServiceOptions) ToPtr() *DirectoryServiceOptions {
 	return &c
 }
@@ -172,18 +179,19 @@ func (c DirectoryServiceOptions) ToPtr() *DirectoryServiceOptions {
 type EnabledProtocols string
 
 const (
-	EnabledProtocolsNfs EnabledProtocols = "NFS"
-	EnabledProtocolsSmb EnabledProtocols = "SMB"
+	EnabledProtocolsNFS EnabledProtocols = "NFS"
+	EnabledProtocolsSMB EnabledProtocols = "SMB"
 )
 
 // PossibleEnabledProtocolsValues returns the possible values for the EnabledProtocols const type.
 func PossibleEnabledProtocolsValues() []EnabledProtocols {
 	return []EnabledProtocols{
-		EnabledProtocolsNfs,
-		EnabledProtocolsSmb,
+		EnabledProtocolsNFS,
+		EnabledProtocolsSMB,
 	}
 }
 
+// ToPtr() returns a *EnabledProtocols pointing to the current value.
 func (c EnabledProtocols) ToPtr() *EnabledProtocols {
 	return &c
 }
@@ -204,6 +212,7 @@ func PossibleEncryptionScopeSourceValues() []EncryptionScopeSource {
 	}
 }
 
+// ToPtr() returns a *EncryptionScopeSource pointing to the current value.
 func (c EncryptionScopeSource) ToPtr() *EncryptionScopeSource {
 	return &c
 }
@@ -224,6 +233,7 @@ func PossibleEncryptionScopeStateValues() []EncryptionScopeState {
 	}
 }
 
+// ToPtr() returns a *EncryptionScopeState pointing to the current value.
 func (c EncryptionScopeState) ToPtr() *EncryptionScopeState {
 	return &c
 }
@@ -249,6 +259,7 @@ func PossibleGeoReplicationStatusValues() []GeoReplicationStatus {
 	}
 }
 
+// ToPtr() returns a *GeoReplicationStatus pointing to the current value.
 func (c GeoReplicationStatus) ToPtr() *GeoReplicationStatus {
 	return &c
 }
@@ -257,18 +268,19 @@ func (c GeoReplicationStatus) ToPtr() *GeoReplicationStatus {
 type HTTPProtocol string
 
 const (
-	HTTPProtocolHTTPsHttp HTTPProtocol = "https,http"
-	HTTPProtocolHTTPs     HTTPProtocol = "https"
+	HTTPProtocolHTTPSHTTP HTTPProtocol = "https,http"
+	HTTPProtocolHTTPS     HTTPProtocol = "https"
 )
 
 // PossibleHTTPProtocolValues returns the possible values for the HTTPProtocol const type.
 func PossibleHTTPProtocolValues() []HTTPProtocol {
 	return []HTTPProtocol{
-		HTTPProtocolHTTPsHttp,
-		HTTPProtocolHTTPs,
+		HTTPProtocolHTTPSHTTP,
+		HTTPProtocolHTTPS,
 	}
 }
 
+// ToPtr() returns a *HTTPProtocol pointing to the current value.
 func (c HTTPProtocol) ToPtr() *HTTPProtocol {
 	return &c
 }
@@ -289,6 +301,7 @@ func PossibleImmutabilityPolicyStateValues() []ImmutabilityPolicyState {
 	}
 }
 
+// ToPtr() returns a *ImmutabilityPolicyState pointing to the current value.
 func (c ImmutabilityPolicyState) ToPtr() *ImmutabilityPolicyState {
 	return &c
 }
@@ -311,6 +324,7 @@ func PossibleImmutabilityPolicyUpdateTypeValues() []ImmutabilityPolicyUpdateType
 	}
 }
 
+// ToPtr() returns a *ImmutabilityPolicyUpdateType pointing to the current value.
 func (c ImmutabilityPolicyUpdateType) ToPtr() *ImmutabilityPolicyUpdateType {
 	return &c
 }
@@ -331,6 +345,7 @@ func PossibleKeyPermissionValues() []KeyPermission {
 	}
 }
 
+// ToPtr() returns a *KeyPermission pointing to the current value.
 func (c KeyPermission) ToPtr() *KeyPermission {
 	return &c
 }
@@ -351,6 +366,7 @@ func PossibleKeySourceValues() []KeySource {
 	}
 }
 
+// ToPtr() returns a *KeySource pointing to the current value.
 func (c KeySource) ToPtr() *KeySource {
 	return &c
 }
@@ -372,6 +388,7 @@ func PossibleKeyTypeValues() []KeyType {
 	}
 }
 
+// ToPtr() returns a *KeyType pointing to the current value.
 func (c KeyType) ToPtr() *KeyType {
 	return &c
 }
@@ -398,6 +415,7 @@ func PossibleKindValues() []Kind {
 	}
 }
 
+// ToPtr() returns a *Kind pointing to the current value.
 func (c Kind) ToPtr() *Kind {
 	return &c
 }
@@ -418,6 +436,7 @@ func PossibleLargeFileSharesStateValues() []LargeFileSharesState {
 	}
 }
 
+// ToPtr() returns a *LargeFileSharesState pointing to the current value.
 func (c LargeFileSharesState) ToPtr() *LargeFileSharesState {
 	return &c
 }
@@ -444,6 +463,7 @@ func PossibleLeaseContainerRequestActionValues() []LeaseContainerRequestAction {
 	}
 }
 
+// ToPtr() returns a *LeaseContainerRequestAction pointing to the current value.
 func (c LeaseContainerRequestAction) ToPtr() *LeaseContainerRequestAction {
 	return &c
 }
@@ -464,6 +484,7 @@ func PossibleLeaseDurationValues() []LeaseDuration {
 	}
 }
 
+// ToPtr() returns a *LeaseDuration pointing to the current value.
 func (c LeaseDuration) ToPtr() *LeaseDuration {
 	return &c
 }
@@ -490,6 +511,7 @@ func PossibleLeaseStateValues() []LeaseState {
 	}
 }
 
+// ToPtr() returns a *LeaseState pointing to the current value.
 func (c LeaseState) ToPtr() *LeaseState {
 	return &c
 }
@@ -510,6 +532,7 @@ func PossibleLeaseStatusValues() []LeaseStatus {
 	}
 }
 
+// ToPtr() returns a *LeaseStatus pointing to the current value.
 func (c LeaseStatus) ToPtr() *LeaseStatus {
 	return &c
 }
@@ -527,6 +550,7 @@ func PossibleListContainersIncludeValues() []ListContainersInclude {
 	}
 }
 
+// ToPtr() returns a *ListContainersInclude pointing to the current value.
 func (c ListContainersInclude) ToPtr() *ListContainersInclude {
 	return &c
 }
@@ -544,6 +568,7 @@ func PossibleManagementPolicyNameValues() []ManagementPolicyName {
 	}
 }
 
+// ToPtr() returns a *ManagementPolicyName pointing to the current value.
 func (c ManagementPolicyName) ToPtr() *ManagementPolicyName {
 	return &c
 }
@@ -566,6 +591,7 @@ func PossibleMinimumTLSVersionValues() []MinimumTLSVersion {
 	}
 }
 
+// ToPtr() returns a *MinimumTLSVersion pointing to the current value.
 func (c MinimumTLSVersion) ToPtr() *MinimumTLSVersion {
 	return &c
 }
@@ -599,6 +625,7 @@ func PossiblePermissionsValues() []Permissions {
 	}
 }
 
+// ToPtr() returns a *Permissions pointing to the current value.
 func (c Permissions) ToPtr() *Permissions {
 	return &c
 }
@@ -623,6 +650,7 @@ func PossiblePrivateEndpointConnectionProvisioningStateValues() []PrivateEndpoin
 	}
 }
 
+// ToPtr() returns a *PrivateEndpointConnectionProvisioningState pointing to the current value.
 func (c PrivateEndpointConnectionProvisioningState) ToPtr() *PrivateEndpointConnectionProvisioningState {
 	return &c
 }
@@ -645,6 +673,7 @@ func PossiblePrivateEndpointServiceConnectionStatusValues() []PrivateEndpointSer
 	}
 }
 
+// ToPtr() returns a *PrivateEndpointServiceConnectionStatus pointing to the current value.
 func (c PrivateEndpointServiceConnectionStatus) ToPtr() *PrivateEndpointServiceConnectionStatus {
 	return &c
 }
@@ -667,6 +696,7 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// ToPtr() returns a *ProvisioningState pointing to the current value.
 func (c ProvisioningState) ToPtr() *ProvisioningState {
 	return &c
 }
@@ -689,6 +719,7 @@ func PossiblePublicAccessValues() []PublicAccess {
 	}
 }
 
+// ToPtr() returns a *PublicAccess pointing to the current value.
 func (c PublicAccess) ToPtr() *PublicAccess {
 	return &c
 }
@@ -709,6 +740,7 @@ func PossibleReasonValues() []Reason {
 	}
 }
 
+// ToPtr() returns a *Reason pointing to the current value.
 func (c Reason) ToPtr() *Reason {
 	return &c
 }
@@ -731,6 +763,7 @@ func PossibleReasonCodeValues() []ReasonCode {
 	}
 }
 
+// ToPtr() returns a *ReasonCode pointing to the current value.
 func (c ReasonCode) ToPtr() *ReasonCode {
 	return &c
 }
@@ -753,6 +786,7 @@ func PossibleRootSquashTypeValues() []RootSquashType {
 	}
 }
 
+// ToPtr() returns a *RootSquashType pointing to the current value.
 func (c RootSquashType) ToPtr() *RootSquashType {
 	return &c
 }
@@ -773,6 +807,7 @@ func PossibleRoutingChoiceValues() []RoutingChoice {
 	}
 }
 
+// ToPtr() returns a *RoutingChoice pointing to the current value.
 func (c RoutingChoice) ToPtr() *RoutingChoice {
 	return &c
 }
@@ -791,6 +826,7 @@ func PossibleRuleTypeValues() []RuleType {
 	}
 }
 
+// ToPtr() returns a *RuleType pointing to the current value.
 func (c RuleType) ToPtr() *RuleType {
 	return &c
 }
@@ -799,30 +835,31 @@ func (c RuleType) ToPtr() *RuleType {
 type SKUName string
 
 const (
-	SKUNamePremiumLrs     SKUName = "Premium_LRS"
-	SKUNamePremiumZrs     SKUName = "Premium_ZRS"
-	SKUNameStandardGrs    SKUName = "Standard_GRS"
-	SKUNameStandardGzrs   SKUName = "Standard_GZRS"
-	SKUNameStandardLrs    SKUName = "Standard_LRS"
-	SKUNameStandardRagrs  SKUName = "Standard_RAGRS"
-	SKUNameStandardRagzrs SKUName = "Standard_RAGZRS"
-	SKUNameStandardZrs    SKUName = "Standard_ZRS"
+	SKUNamePremiumLRS     SKUName = "Premium_LRS"
+	SKUNamePremiumZRS     SKUName = "Premium_ZRS"
+	SKUNameStandardGRS    SKUName = "Standard_GRS"
+	SKUNameStandardGZRS   SKUName = "Standard_GZRS"
+	SKUNameStandardLRS    SKUName = "Standard_LRS"
+	SKUNameStandardRAGRS  SKUName = "Standard_RAGRS"
+	SKUNameStandardRAGZRS SKUName = "Standard_RAGZRS"
+	SKUNameStandardZRS    SKUName = "Standard_ZRS"
 )
 
 // PossibleSKUNameValues returns the possible values for the SKUName const type.
 func PossibleSKUNameValues() []SKUName {
 	return []SKUName{
-		SKUNamePremiumLrs,
-		SKUNamePremiumZrs,
-		SKUNameStandardGrs,
-		SKUNameStandardGzrs,
-		SKUNameStandardLrs,
-		SKUNameStandardRagrs,
-		SKUNameStandardRagzrs,
-		SKUNameStandardZrs,
+		SKUNamePremiumLRS,
+		SKUNamePremiumZRS,
+		SKUNameStandardGRS,
+		SKUNameStandardGZRS,
+		SKUNameStandardLRS,
+		SKUNameStandardRAGRS,
+		SKUNameStandardRAGZRS,
+		SKUNameStandardZRS,
 	}
 }
 
+// ToPtr() returns a *SKUName pointing to the current value.
 func (c SKUName) ToPtr() *SKUName {
 	return &c
 }
@@ -843,6 +880,7 @@ func PossibleSKUTierValues() []SKUTier {
 	}
 }
 
+// ToPtr() returns a *SKUTier pointing to the current value.
 func (c SKUTier) ToPtr() *SKUTier {
 	return &c
 }
@@ -867,6 +905,7 @@ func PossibleServicesValues() []Services {
 	}
 }
 
+// ToPtr() returns a *Services pointing to the current value.
 func (c Services) ToPtr() *Services {
 	return &c
 }
@@ -892,6 +931,7 @@ func PossibleShareAccessTierValues() []ShareAccessTier {
 	}
 }
 
+// ToPtr() returns a *ShareAccessTier pointing to the current value.
 func (c ShareAccessTier) ToPtr() *ShareAccessTier {
 	return &c
 }
@@ -916,6 +956,7 @@ func PossibleSignedResourceValues() []SignedResource {
 	}
 }
 
+// ToPtr() returns a *SignedResource pointing to the current value.
 func (c SignedResource) ToPtr() *SignedResource {
 	return &c
 }
@@ -940,6 +981,7 @@ func PossibleSignedResourceTypesValues() []SignedResourceTypes {
 	}
 }
 
+// ToPtr() returns a *SignedResourceTypes pointing to the current value.
 func (c SignedResourceTypes) ToPtr() *SignedResourceTypes {
 	return &c
 }
@@ -966,6 +1008,7 @@ func PossibleStateValues() []State {
 	}
 }
 
+// ToPtr() returns a *State pointing to the current value.
 func (c State) ToPtr() *State {
 	return &c
 }
@@ -985,6 +1028,7 @@ func PossibleStorageAccountExpandValues() []StorageAccountExpand {
 	}
 }
 
+// ToPtr() returns a *StorageAccountExpand pointing to the current value.
 func (c StorageAccountExpand) ToPtr() *StorageAccountExpand {
 	return &c
 }
@@ -1013,6 +1057,7 @@ func PossibleUsageUnitValues() []UsageUnit {
 	}
 }
 
+// ToPtr() returns a *UsageUnit pointing to the current value.
 func (c UsageUnit) ToPtr() *UsageUnit {
 	return &c
 }

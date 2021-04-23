@@ -658,10 +658,10 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 		SKU: &armstorage.SKU{
 			Name: &sku,
 		},
-		Tags: tags.Track2ExpandString(t),
+		Tags: tags.Track2Expand(t),
 		Kind: &kind,
 		Properties: &armstorage.StorageAccountPropertiesCreateParameters{
-			EnableHTTPsTrafficOnly: &enableHTTPSTrafficOnly,
+			EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
 			NetworkRuleSet:         expandStorageAccountNetworkRules(d),
 			IsHnsEnabled:           &isHnsEnabled,
 		},
@@ -684,7 +684,7 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 
 	if _, ok := d.GetOk("identity"); ok {
 		storageAccountIdentity := expandAzureRmStorageAccountIdentity(d)
-		parameters.IDentity = storageAccountIdentity
+		parameters.Identity = storageAccountIdentity
 	}
 
 	if _, ok := d.GetOk("custom_domain"); ok {
@@ -693,7 +693,7 @@ func resourceStorageAccountCreate(d *schema.ResourceData, meta interface{}) erro
 
 	// BlobStorage does not support ZRS
 	if accountKind == string(armstorage.KindBlobStorage) {
-		if *parameters.SKU.Name == armstorage.SKUNameStandardZrs {
+		if *parameters.SKU.Name == armstorage.SKUNameStandardZRS {
 			return fmt.Errorf("A `account_replication_type` of `ZRS` isn't supported for Blob Storage accounts.")
 		}
 	}
@@ -843,7 +843,7 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 	accountKind := d.Get("account_kind").(string)
 
 	if accountKind == string(armstorage.KindBlobStorage) {
-		if storageType == string(armstorage.SKUNameStandardZrs) {
+		if storageType == string(armstorage.SKUNameStandardZRS) {
 			return fmt.Errorf("A `account_replication_type` of `ZRS` isn't supported for Blob Storage accounts.")
 		}
 	}
@@ -892,7 +892,7 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 		t := d.Get("tags").(map[string]interface{})
 
 		opts := armstorage.StorageAccountUpdateParameters{
-			Tags: tags.Track2ExpandString(t),
+			Tags: tags.Track2Expand(t),
 		}
 
 		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
@@ -917,7 +917,7 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 
 		opts := armstorage.StorageAccountUpdateParameters{
 			Properties: &armstorage.StorageAccountPropertiesUpdateParameters{
-				EnableHTTPsTrafficOnly: &enableHTTPSTrafficOnly,
+				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
 			},
 		}
 
@@ -977,7 +977,7 @@ func resourceStorageAccountUpdate(d *schema.ResourceData, meta interface{}) erro
 
 	if d.HasChange("identity") {
 		opts := armstorage.StorageAccountUpdateParameters{
-			IDentity: expandAzureRmStorageAccountIdentity(d),
+			Identity: expandAzureRmStorageAccountIdentity(d),
 		}
 
 		if _, err := client.Update(ctx, resourceGroupName, storageAccountName, opts, nil); err != nil {
@@ -1143,7 +1143,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 
 	if props := resp.StorageAccount.Properties; props != nil {
 		d.Set("access_tier", props.AccessTier)
-		d.Set("enable_https_traffic_only", props.EnableHTTPsTrafficOnly)
+		d.Set("enable_https_traffic_only", props.EnableHTTPSTrafficOnly)
 		d.Set("is_hns_enabled", props.IsHnsEnabled)
 		d.Set("allow_blob_public_access", props.AllowBlobPublicAccess)
 		// For all Clouds except Public and USGovernmentCloud, "min_tls_version" is not returned from Azure so always persist the default values for "min_tls_version".
@@ -1227,7 +1227,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("secondary_access_key", storageAccountKeys[1].Value)
 	}
 
-	identity := flattenAzureRmStorageAccountIdentity(resp.StorageAccount.IDentity)
+	identity := flattenAzureRmStorageAccountIdentity(resp.StorageAccount.Identity)
 	if err := d.Set("identity", identity); err != nil {
 		return err
 	}
@@ -1310,7 +1310,7 @@ func resourceStorageAccountRead(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Error setting `static_website `for AzureRM Storage Account %q: %+v", name, err)
 	}
 
-	return tags.Track2FlattenAndSetString(d, resp.StorageAccount.Tags)
+	return tags.Track2FlattenAndSet(d, resp.StorageAccount.Tags)
 }
 
 func resourceStorageAccountDelete(d *schema.ResourceData, meta interface{}) error {
@@ -1432,9 +1432,9 @@ func expandStorageAccountNetworkRules(d *schema.ResourceData) *armstorage.Networ
 	return networkRuleSet
 }
 
-func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]armstorage.IPRule {
+func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]*armstorage.IPRule {
 	ipRulesInfo := networkRule["ip_rules"].(*schema.Set).List()
-	ipRules := make([]armstorage.IPRule, len(ipRulesInfo))
+	ipRules := make([]*armstorage.IPRule, len(ipRulesInfo))
 
 	for i, ipRuleConfig := range ipRulesInfo {
 		attrs := ipRuleConfig.(string)
@@ -1442,15 +1442,15 @@ func expandStorageAccountIPRules(networkRule map[string]interface{}) *[]armstora
 			IPAddressOrRange: utils.String(attrs),
 			Action:           utils.String("Allow"),
 		}
-		ipRules[i] = ipRule
+		ipRules[i] = &ipRule
 	}
 
 	return &ipRules
 }
 
-func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]armstorage.VirtualNetworkRule {
+func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]*armstorage.VirtualNetworkRule {
 	virtualNetworkInfo := networkRule["virtual_network_subnet_ids"].(*schema.Set).List()
-	virtualNetworks := make([]armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
+	virtualNetworks := make([]*armstorage.VirtualNetworkRule, len(virtualNetworkInfo))
 
 	for i, virtualNetworkConfig := range virtualNetworkInfo {
 		attrs := virtualNetworkConfig.(string)
@@ -1458,7 +1458,7 @@ func expandStorageAccountVirtualNetworks(networkRule map[string]interface{}) *[]
 			VirtualNetworkResourceID: utils.String(attrs),
 			Action:                   utils.String("Allow"),
 		}
-		virtualNetworks[i] = virtualNetwork
+		virtualNetworks[i] = &virtualNetwork
 	}
 
 	return &virtualNetworks
@@ -1482,7 +1482,7 @@ func expandBlobProperties(input []interface{}) armstorage.BlobServiceProperties 
 	props := armstorage.BlobServiceProperties{
 		BlobServiceProperties: &armstorage.BlobServicePropertiesAutoGenerated{
 			Cors: &armstorage.CorsRules{
-				CorsRules: &[]armstorage.CorsRule{},
+				CorsRules: &[]*armstorage.CorsRule{},
 			},
 			DeleteRetentionPolicy: &armstorage.DeleteRetentionPolicy{
 				Enabled: utils.Bool(false),
@@ -1529,14 +1529,14 @@ func expandBlobPropertiesCors(input []interface{}) *armstorage.CorsRules {
 		return &blobCorsRules
 	}
 
-	corsRules := make([]armstorage.CorsRule, 0)
+	corsRules := make([]*armstorage.CorsRule, 0)
 	for _, attr := range input {
 		corsRuleAttr := attr.(map[string]interface{})
 		corsRule := armstorage.CorsRule{}
 
-		allowedOrigins := *utils.ExpandStringSlice(corsRuleAttr["allowed_origins"].([]interface{}))
-		allowedHeaders := *utils.ExpandStringSlice(corsRuleAttr["allowed_headers"].([]interface{}))
-		exposedHeaders := *utils.ExpandStringSlice(corsRuleAttr["exposed_headers"].([]interface{}))
+		allowedOrigins := *utils.ExpandStringPtrSlice(corsRuleAttr["allowed_origins"].([]interface{}))
+		allowedHeaders := *utils.ExpandStringPtrSlice(corsRuleAttr["allowed_headers"].([]interface{}))
+		exposedHeaders := *utils.ExpandStringPtrSlice(corsRuleAttr["exposed_headers"].([]interface{}))
 		maxAgeInSeconds := int32(corsRuleAttr["max_age_in_seconds"].(int))
 
 		corsRule.AllowedOrigins = &allowedOrigins
@@ -1545,7 +1545,7 @@ func expandBlobPropertiesCors(input []interface{}) *armstorage.CorsRules {
 		corsRule.ExposedHeaders = &exposedHeaders
 		corsRule.MaxAgeInSeconds = &maxAgeInSeconds
 
-		corsRules = append(corsRules, corsRule)
+		corsRules = append(corsRules, &corsRule)
 	}
 
 	blobCorsRules.CorsRules = &corsRules
@@ -1553,13 +1553,14 @@ func expandBlobPropertiesCors(input []interface{}) *armstorage.CorsRules {
 	return &blobCorsRules
 }
 
-func expandStorageCorsMethods(input []interface{}) *[]armstorage.CorsRuleAllowedMethodsItem {
-	result := make([]armstorage.CorsRuleAllowedMethodsItem, 0)
+func expandStorageCorsMethods(input []interface{}) *[]*armstorage.CorsRuleAllowedMethodsItem {
+	result := make([]*armstorage.CorsRuleAllowedMethodsItem, 0)
 	for _, item := range input {
 		if item != nil {
-			result = append(result, armstorage.CorsRuleAllowedMethodsItem(item.(string)))
+			itemPtr := armstorage.CorsRuleAllowedMethodsItem(item.(string))
+			result = append(result, &itemPtr)
 		} else {
-			result = append(result, "")
+			result = append(result, nil)
 		}
 	}
 	return &result
@@ -1727,7 +1728,7 @@ func flattenStorageAccountNetworkRules(input *armstorage.NetworkRuleSet) []inter
 	return []interface{}{networkRules}
 }
 
-func flattenStorageAccountIPRules(input *[]armstorage.IPRule) []interface{} {
+func flattenStorageAccountIPRules(input *[]*armstorage.IPRule) []interface{} {
 	if input == nil {
 		return []interface{}{}
 	}
@@ -1744,7 +1745,7 @@ func flattenStorageAccountIPRules(input *[]armstorage.IPRule) []interface{} {
 	return ipRules
 }
 
-func flattenStorageAccountVirtualNetworks(input *[]armstorage.VirtualNetworkRule) []interface{} {
+func flattenStorageAccountVirtualNetworks(input *[]*armstorage.VirtualNetworkRule) []interface{} {
 	if input == nil {
 		return []interface{}{}
 	}
@@ -1796,26 +1797,12 @@ func flattenBlobPropertiesCorsRule(input *armstorage.CorsRules) []interface{} {
 	}
 
 	for _, corsRule := range *input.CorsRules {
-		allowedOrigins := make([]string, 0)
-		if corsRule.AllowedOrigins != nil {
-			allowedOrigins = *corsRule.AllowedOrigins
-		}
 
 		allowedMethods := make([]string, 0)
 		for _, i := range *corsRule.AllowedMethods {
-			if i != "" {
-				allowedMethods = append(allowedMethods, string(i))
+			if i != nil {
+				allowedMethods = append(allowedMethods, string(*i))
 			}
-		}
-
-		allowedHeaders := make([]string, 0)
-		if corsRule.AllowedHeaders != nil {
-			allowedHeaders = *corsRule.AllowedHeaders
-		}
-
-		exposedHeaders := make([]string, 0)
-		if corsRule.ExposedHeaders != nil {
-			exposedHeaders = *corsRule.ExposedHeaders
 		}
 
 		maxAgeInSeconds := 0
@@ -1824,10 +1811,10 @@ func flattenBlobPropertiesCorsRule(input *armstorage.CorsRules) []interface{} {
 		}
 
 		corsRules = append(corsRules, map[string]interface{}{
-			"allowed_headers":    allowedHeaders,
-			"allowed_origins":    allowedOrigins,
+			"allowed_headers":    utils.FlattenStringPtrSlice(corsRule.AllowedHeaders),
+			"allowed_origins":    utils.FlattenStringPtrSlice(corsRule.AllowedOrigins),
 			"allowed_methods":    allowedMethods,
-			"exposed_headers":    exposedHeaders,
+			"exposed_headers":    utils.FlattenStringPtrSlice(corsRule.ExposedHeaders),
 			"max_age_in_seconds": maxAgeInSeconds,
 		})
 	}
@@ -1995,16 +1982,16 @@ func ValidateStorageAccountName(v interface{}, _ string) (warnings []string, err
 	return warnings, errors
 }
 
-func expandAzureRmStorageAccountIdentity(d *schema.ResourceData) *armstorage.IDentity {
+func expandAzureRmStorageAccountIdentity(d *schema.ResourceData) *armstorage.Identity {
 	identities := d.Get("identity").([]interface{})
 	identity := identities[0].(map[string]interface{})
 	identityType := identity["type"].(string)
-	return &armstorage.IDentity{
+	return &armstorage.Identity{
 		Type: &identityType,
 	}
 }
 
-func flattenAzureRmStorageAccountIdentity(identity *armstorage.IDentity) []interface{} {
+func flattenAzureRmStorageAccountIdentity(identity *armstorage.Identity) []interface{} {
 	if identity == nil {
 		return make([]interface{}, 0)
 	}
