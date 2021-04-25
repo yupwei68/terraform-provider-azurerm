@@ -89,7 +89,7 @@ func resourceStorageEncryptionScopeCreate(d *schema.ResourceData, meta interface
 			return fmt.Errorf("checking for present of existing Storage Encryption Scope %q (Storage Account Name %q / Resource Group %q): %+v", name, accountId.Name, accountId.ResourceGroup, err)
 		}
 	}
-	if existing.EncryptionScope.EncryptionScopeProperties != nil && *existing.EncryptionScope.EncryptionScopeProperties.State == armstorage.EncryptionScopeStateEnabled {
+	if existing.EncryptionScopeexisting.EncryptionScope.EncryptionScopeProperties != nil && *existing.EncryptionScope.EncryptionScopeProperties.State == armstorage.EncryptionScopeStateEnabled {
 		return tf.ImportAsExistsError("azurerm_storage_encryption_scope", resourceId)
 	}
 
