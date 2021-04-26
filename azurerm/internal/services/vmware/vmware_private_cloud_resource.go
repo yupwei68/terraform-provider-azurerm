@@ -2,10 +2,11 @@ package vmware
 
 import (
 	"fmt"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/avs/mgmt/2020-03-20/avs"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/avs/2020-03-20/armavs"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -201,44 +202,51 @@ func resourceVmwarePrivateCloudCreate(d *schema.ResourceData, meta interface{}) 
 
 	id := parse.NewPrivateCloudID(subscriptionId, resourceGroup, name).ID()
 
-	existing, err := client.Get(ctx, resourceGroup, name)
+	_, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if !utils.ResponseWasNotFound(existing.Response) {
+		if !utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("checking for present of existing Vmware Private Cloud %q (Resource Group %q): %+v", name, resourceGroup, err)
 		}
 	}
-	if !utils.ResponseWasNotFound(existing.Response) {
+	if !utils.Track2ResponseWasNotFound(err) {
 		return tf.ImportAsExistsError("azurerm_vmware_private_cloud", id)
 	}
 
-	internet := avs.Disabled
+	internet := armavs.InternetEnumDisabled
 	if d.Get("internet_connection_enabled").(bool) {
-		internet = avs.Enabled
+		internet = armavs.InternetEnumEnabled
 	}
 
-	privateCloud := avs.PrivateCloud{
-		Location: utils.String(location.Normalize(d.Get("location").(string))),
-		Sku: &avs.Sku{
+	privateCloud := armavs.PrivateCloud{
+		TrackedResource: armavs.TrackedResource{
+			Location: utils.String(location.Normalize(d.Get("location").(string))),
+			Tags:     tags.Track2Expand(d.Get("tags").(map[string]interface{})),
+		},
+		SKU: &armavs.SKU{
 			Name: utils.String(d.Get("sku_name").(string)),
 		},
-		PrivateCloudProperties: &avs.PrivateCloudProperties{
-			ManagementCluster: &avs.ManagementCluster{
-				ClusterSize: utils.Int32(int32(d.Get("management_cluster.0.size").(int))),
+		Properties: &armavs.PrivateCloudProperties{
+			PrivateCloudUpdateProperties: armavs.PrivateCloudUpdateProperties{
+				Internet: &internet,
+				ManagementCluster: &armavs.ManagementCluster{
+					ClusterUpdateProperties: armavs.ClusterUpdateProperties{
+						ClusterSize: utils.Int32(int32(d.Get("management_cluster.0.size").(int))),
+					},
+				},
 			},
+
 			NetworkBlock:    utils.String(d.Get("network_subnet_cidr").(string)),
-			Internet:        internet,
 			NsxtPassword:    utils.String(d.Get("nsxt_password").(string)),
 			VcenterPassword: utils.String(d.Get("vcenter_password").(string)),
 		},
-		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
-	future, err := client.CreateOrUpdate(ctx, resourceGroup, name, privateCloud)
+	future, err := client.BeginCreateOrUpdate(ctx, resourceGroup, name, privateCloud, nil)
 	if err != nil {
 		return fmt.Errorf("creating Vmware Private Cloud %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("waiting for creation of the Vmware Private Cloud %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
@@ -257,9 +265,9 @@ func resourceVmwarePrivateCloudRead(d *schema.ResourceData, meta interface{}) er
 		return err
 	}
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[INFO] Vmware Private Cloud %q does not exist - removing from state", d.Id())
 			d.SetId("")
 			return nil
@@ -268,17 +276,19 @@ func resourceVmwarePrivateCloudRead(d *schema.ResourceData, meta interface{}) er
 	}
 	d.Set("name", id.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
-	d.Set("location", location.NormalizeNilable(resp.Location))
-	if props := resp.PrivateCloudProperties; props != nil {
-		if err := d.Set("management_cluster", flattenArmPrivateCloudManagementCluster(props.ManagementCluster)); err != nil {
-			return fmt.Errorf("setting `management_cluster`: %+v", err)
-		}
+	d.Set("location", location.NormalizeNilable(resp.PrivateCloud.Location))
+	if props := resp.PrivateCloud.Properties; props != nil {
+
 		d.Set("network_subnet_cidr", props.NetworkBlock)
 		if err := d.Set("circuit", flattenArmPrivateCloudCircuit(props.Circuit)); err != nil {
 			return fmt.Errorf("setting `circuit`: %+v", err)
 		}
+		d.Set("internet_connection_enabled", *props.PrivateCloudUpdateProperties.Internet == armavs.InternetEnumEnabled)
 
-		d.Set("internet_connection_enabled", props.Internet == avs.Enabled)
+		if err := d.Set("management_cluster", flattenArmPrivateCloudManagementCluster(props.PrivateCloudUpdateProperties.ManagementCluster)); err != nil {
+			return fmt.Errorf("setting `management_cluster`: %+v", err)
+		}
+
 		d.Set("hcx_cloud_manager_endpoint", props.Endpoints.HcxCloudManager)
 		d.Set("nsxt_manager_endpoint", props.Endpoints.NsxtManager)
 		d.Set("vcsa_endpoint", props.Endpoints.Vcsa)
@@ -289,11 +299,11 @@ func resourceVmwarePrivateCloudRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("vmotion_subnet_cidr", props.VmotionNetwork)
 	}
 
-	if sku := resp.Sku; sku != nil {
+	if sku := resp.PrivateCloud.SKU; sku != nil {
 		d.Set("sku_name", sku.Name)
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, resp.PrivateCloud.Tags)
 }
 
 func resourceVmwarePrivateCloudUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -306,8 +316,8 @@ func resourceVmwarePrivateCloudUpdate(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 
-	privateCloudUpdate := avs.PrivateCloudUpdate{
-		PrivateCloudUpdateProperties: &avs.PrivateCloudUpdateProperties{},
+	privateCloudUpdate := armavs.PrivateCloudUpdate{
+		Properties: &armavs.PrivateCloudUpdateProperties{},
 	}
 
 	if d.HasChange("management_cluster") && d.HasChange("internet_connection_enabled") {
@@ -315,29 +325,31 @@ func resourceVmwarePrivateCloudUpdate(d *schema.ResourceData, meta interface{}) 
 	}
 
 	if d.HasChange("management_cluster") {
-		privateCloudUpdate.PrivateCloudUpdateProperties.ManagementCluster = &avs.ManagementCluster{
-			ClusterSize: utils.Int32(int32(d.Get("management_cluster.0.size").(int))),
+		privateCloudUpdate.Properties.ManagementCluster = &armavs.ManagementCluster{
+			ClusterUpdateProperties: armavs.ClusterUpdateProperties{
+				ClusterSize: utils.Int32(int32(d.Get("management_cluster.0.size").(int))),
+			},
 		}
 	}
 
 	if d.HasChange("internet_connection_enabled") {
-		internet := avs.Disabled
+		internet := armavs.InternetEnumDisabled
 		if d.Get("internet_connection_enabled").(bool) {
-			internet = avs.Enabled
+			internet = armavs.InternetEnumEnabled
 		}
-		privateCloudUpdate.PrivateCloudUpdateProperties.Internet = internet
+		privateCloudUpdate.Properties.Internet = &internet
 	}
 
 	if d.HasChange("tags") {
-		privateCloudUpdate.Tags = tags.Expand(d.Get("tags").(map[string]interface{}))
+		privateCloudUpdate.Tags = tags.Track2Expand(d.Get("tags").(map[string]interface{}))
 	}
 
-	future, err := client.Update(ctx, id.ResourceGroup, id.Name, privateCloudUpdate)
+	future, err := client.BeginUpdate(ctx, id.ResourceGroup, id.Name, privateCloudUpdate, nil)
 	if err != nil {
 		return fmt.Errorf("updating Vmware Private Cloud %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("waiting for update of Vmware Private Cloud %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 	return resourceVmwarePrivateCloudRead(d, meta)
@@ -353,19 +365,19 @@ func resourceVmwarePrivateCloudDelete(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 
-	future, err := client.Delete(ctx, id.ResourceGroup, id.Name)
+	future, err := client.BeginDelete(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return fmt.Errorf("deleting Vmware Private Cloud %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("waiting for deletion of the Vmware Private Cloud %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
 	return nil
 }
 
-func flattenArmPrivateCloudManagementCluster(input *avs.ManagementCluster) []interface{} {
+func flattenArmPrivateCloudManagementCluster(input *armavs.ManagementCluster) []interface{} {
 	if input == nil {
 		return make([]interface{}, 0)
 	}
@@ -382,12 +394,12 @@ func flattenArmPrivateCloudManagementCluster(input *avs.ManagementCluster) []int
 		map[string]interface{}{
 			"size":  clusterSize,
 			"id":    clusterId,
-			"hosts": utils.FlattenStringSlice(input.Hosts),
+			"hosts": utils.FlattenStringPtrSlice(input.Hosts),
 		},
 	}
 }
 
-func flattenArmPrivateCloudCircuit(input *avs.Circuit) []interface{} {
+func flattenArmPrivateCloudCircuit(input *armavs.Circuit) []interface{} {
 	if input == nil {
 		return make([]interface{}, 0)
 	}

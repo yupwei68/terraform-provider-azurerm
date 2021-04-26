@@ -105,12 +105,12 @@ func (VmwarePrivateCloudResource) Exists(ctx context.Context, clients *clients.C
 		return nil, err
 	}
 
-	resp, err := clients.Vmware.PrivateCloudClient.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := clients.Vmware.PrivateCloudClient.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Vmware Private Cloud %q (resource group: %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	return utils.Bool(resp.PrivateCloudProperties != nil), nil
+	return utils.Bool(resp.PrivateCloud.Properties != nil), nil
 }
 
 func (VmwarePrivateCloudResource) template(data acceptance.TestData) string {
