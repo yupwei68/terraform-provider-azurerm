@@ -776,4 +776,5 @@ gopkg.in/warnings.v0
 gopkg.in/yaml.v2
 # github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azure-helpers v0.16.3
 # github.com/Azure/azure-sdk-for-go/sdk/arm/compute => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/compute v0.3.0
+# github.com/Azure/azure-sdk-for-go/sdk/arm/storage => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/storage v0.1.0
 # github.com/Azure/azure-sdk-for-go/sdk/arm/avs => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/avs v0.1.1

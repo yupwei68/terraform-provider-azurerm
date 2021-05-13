@@ -35,6 +35,8 @@ replace github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azu
 
 replace github.com/Azure/azure-sdk-for-go/sdk/arm/compute => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/compute v0.3.0
 
+replace github.com/Azure/azure-sdk-for-go/sdk/arm/storage => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/storage v0.1.0
+
 replace github.com/Azure/azure-sdk-for-go/sdk/arm/avs => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/avs v0.1.1
 
 go 1.16
