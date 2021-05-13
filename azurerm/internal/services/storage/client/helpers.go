@@ -89,13 +89,13 @@ func (client Client) FindAccount(ctx context.Context, accountName string) (*acco
 	var accounts []armstorage.StorageAccount
 	if listResult := accountsPage.PageResponse().StorageAccountListResult; listResult != nil && listResult.Value != nil {
 		for _, v := range *accountsPage.PageResponse().StorageAccountListResult.Value {
-			accounts = append(accounts, *v)
+			accounts = append(accounts, v)
 		}
 	}
 	for accountsPage.NextPage(ctx) {
 		if listResult := accountsPage.PageResponse().StorageAccountListResult; listResult != nil && listResult.Value != nil {
 			for _, v := range *accountsPage.PageResponse().StorageAccountListResult.Value {
-				accounts = append(accounts, *v)
+				accounts = append(accounts, v)
 			}
 		}
 	}
