@@ -17,12 +17,10 @@ import (
 
 // BlobRestoreStatusPoller provides polling facilities until the operation completes
 type BlobRestoreStatusPoller interface {
-	azcore.Poller
-
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final BlobRestoreStatusResponse will be returned.
+	Done() bool
+	Poll(ctx context.Context) (*http.Response, error)
 	FinalResponse(ctx context.Context) (BlobRestoreStatusResponse, error)
+	ResumeToken() (string, error)
 }
 
 type blobRestoreStatusPoller struct {
@@ -69,12 +67,10 @@ func (p *blobRestoreStatusPoller) pollUntilDone(ctx context.Context, frequency t
 
 // HTTPPoller provides polling facilities until the operation completes
 type HTTPPoller interface {
-	azcore.Poller
-
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final HTTPResponse will be returned.
+	Done() bool
+	Poll(ctx context.Context) (*http.Response, error)
 	FinalResponse(ctx context.Context) (*http.Response, error)
+	ResumeToken() (string, error)
 }
 
 type httpPoller struct {
@@ -109,12 +105,10 @@ func (p *httpPoller) pollUntilDone(ctx context.Context, frequency time.Duration)
 
 // StorageAccountPoller provides polling facilities until the operation completes
 type StorageAccountPoller interface {
-	azcore.Poller
-
-	// FinalResponse performs a final GET to the service and returns the final response
-	// for the polling operation. If there is an error performing the final GET then an error is returned.
-	// If the final GET succeeded then the final StorageAccountResponse will be returned.
+	Done() bool
+	Poll(ctx context.Context) (*http.Response, error)
 	FinalResponse(ctx context.Context) (StorageAccountResponse, error)
+	ResumeToken() (string, error)
 }
 
 type storageAccountPoller struct {

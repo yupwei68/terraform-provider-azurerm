@@ -7,4 +7,4 @@
 
 package armstorage
 
-const telemetryInfo = "azsdk-go-armstorage/<version>"
+const telemetryInfo = "azsdk-go-armstorage/v0.2.0"

@@ -137,7 +137,6 @@ func (b Builder) buildTrack2Credential(config *Config) error {
 	supportedAuthenticationMethods := []authMethodTrack2{
 		servicePrincipalClientCertificateAuth{},
 		servicePrincipalClientSecretAuth{},
-		managedServiceIdentityAuth{},
 		azureCliTokenAuth{},
 	}
 
