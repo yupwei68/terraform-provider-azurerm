@@ -1747,7 +1747,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestAzureRMSA-%d"
+  name     = "acctestRG-storage-%d"
   location = "%s"
 }
 
@@ -1772,12 +1772,16 @@ resource "azurerm_storage_account" "test" {
       days = 300
     }
 
-    default_service_version  = "2019-07-07"
+    default_service_version  = "2020-06-12"
     versioning_enabled       = true
     change_feed_enabled      = true
     last_access_time_enabled = true
     container_delete_retention_policy {
       days = 7
+    }
+
+    restore_policy {
+      days = 9
     }
 
   }
@@ -1792,7 +1796,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestAzureRMSA-%d"
+  name     = "acctestRG-storage-%d"
   location = "%s"
 }
 
@@ -1821,10 +1825,15 @@ resource "azurerm_storage_account" "test" {
       max_age_in_seconds = "1000"
     }
 
+    versioning_enabled = true
+
     delete_retention_policy {
     }
 
     container_delete_retention_policy {
+    }
+
+    restore_policy {
     }
   }
 }
@@ -1838,7 +1847,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestAzureRMSA-%d"
+  name     = "acctestRG-storage-%d"
   location = "%s"
 }
 
