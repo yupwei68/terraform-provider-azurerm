@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -106,7 +107,7 @@ func TestAccAzureRMStorageShareFile_withFile(t *testing.T) {
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
-			Config: r.withFile(data, sourceBlob.Name()),
+			Config: r.withFile(data, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),

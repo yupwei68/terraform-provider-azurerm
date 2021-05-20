@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -209,10 +210,10 @@ func TestAccStorageBlob_blockFromLocalFile(t *testing.T) {
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
-			Config: r.blockFromLocalBlob(data, sourceBlob.Name()),
+			Config: r.blockFromLocalBlob(data, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				data.CheckWithClient(r.blobMatchesFile(blobs.BlockBlob, sourceBlob.Name())),
+				data.CheckWithClient(r.blobMatchesFile(blobs.BlockBlob, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\"))),
 			),
 		},
 		data.ImportStep("parallelism", "size", "source", "type"),
@@ -233,11 +234,11 @@ func TestAccStorageBlob_blockFromLocalFileWithContentMd5(t *testing.T) {
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
-			Config: r.contentMd5ForLocalFile(data, sourceBlob.Name()),
+			Config: r.contentMd5ForLocalFile(data, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("name").HasValue("example.vhd"),
-				resource.TestCheckResourceAttr(data.ResourceName, "source", sourceBlob.Name()),
+				resource.TestCheckResourceAttr(data.ResourceName, "source", strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			),
 		},
 		data.ImportStep("parallelism", "size", "source", "type"),
@@ -355,10 +356,10 @@ func TestAccStorageBlob_pageFromLocalFile(t *testing.T) {
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
-			Config: r.pageFromLocalBlob(data, sourceBlob.Name()),
+			Config: r.pageFromLocalBlob(data, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				data.CheckWithClient(r.blobMatchesFile(blobs.PageBlob, sourceBlob.Name())),
+				data.CheckWithClient(r.blobMatchesFile(blobs.PageBlob, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\"))),
 			),
 		},
 		data.ImportStep("parallelism", "size", "type", "source"),

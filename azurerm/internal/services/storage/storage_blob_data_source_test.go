@@ -3,6 +3,7 @@ package storage_test
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -26,7 +27,7 @@ func TestAccDataSourceStorageBlob_basic(t *testing.T) {
 
 	data.DataSourceTest(t, []resource.TestStep{
 		{
-			Config: StorageBlobDataSource{}.basicWithDataSource(data, sourceBlob.Name()),
+			Config: StorageBlobDataSource{}.basicWithDataSource(data, strings.ReplaceAll(sourceBlob.Name(), "\\", "\\\\")),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).Key("type").HasValue("Block"),
 				check.That(data.ResourceName).Key("metadata.%").HasValue("2"),
