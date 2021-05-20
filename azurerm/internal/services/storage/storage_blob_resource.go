@@ -17,7 +17,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/blobs"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/blobs"
 )
 
 func resourceStorageBlob() *schema.Resource {

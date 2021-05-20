@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/pluginsdk"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/file/shares"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/file/shares"
 )
 
 var _ pluginsdk.StateUpgrade = ShareV0ToV1{}

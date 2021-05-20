@@ -14,7 +14,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/pluginsdk"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/table/tables"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/table/tables"
 )
 
 func resourceStorageTable() *schema.Resource {

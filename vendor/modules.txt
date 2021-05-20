@@ -452,19 +452,19 @@ github.com/terraform-providers/terraform-provider-azuread/azuread/helpers/slices
 github.com/terraform-providers/terraform-provider-azuread/azuread/helpers/tf
 github.com/terraform-providers/terraform-provider-azuread/azuread/helpers/validate
 github.com/terraform-providers/terraform-provider-azuread/version
-# github.com/tombuildsstuff/giovanni v0.15.1
+# github.com/tombuildsstuff/giovanni v0.15.1 => C:\Users\yupwei\go\src\github.com\tombuildsstuff\giovanni
 ## explicit
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/accounts
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/blobs
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/containers
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/datalakestore/filesystems
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/datalakestore/paths
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/file/directories
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/file/files
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/file/shares
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/queue/queues
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/table/entities
-github.com/tombuildsstuff/giovanni/storage/2019-12-12/table/tables
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/accounts
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/blobs
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/containers
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/datalakestore/filesystems
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/datalakestore/paths
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/file/directories
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/file/files
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/file/shares
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/queue/queues
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/table/entities
+github.com/tombuildsstuff/giovanni/storage/2020-08-04/table/tables
 github.com/tombuildsstuff/giovanni/storage/accesscontrol
 github.com/tombuildsstuff/giovanni/storage/internal/endpoints
 github.com/tombuildsstuff/giovanni/storage/internal/metadata
@@ -699,3 +699,4 @@ google.golang.org/protobuf/types/pluginpb
 # gopkg.in/yaml.v2 v2.3.0
 ## explicit
 gopkg.in/yaml.v2
+# github.com/tombuildsstuff/giovanni => C:\Users\yupwei\go\src\github.com\tombuildsstuff\giovanni

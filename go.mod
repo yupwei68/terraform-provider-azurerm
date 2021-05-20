@@ -29,3 +29,5 @@ require (
 )
 
 go 1.16
+
+replace github.com/tombuildsstuff/giovanni => C:\Users\yupwei\go\src\github.com\tombuildsstuff\giovanni

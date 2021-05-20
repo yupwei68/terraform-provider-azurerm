@@ -28,8 +28,8 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/suppress"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/accounts"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/queue/queues"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/accounts"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/queue/queues"
 )
 
 var storageAccountResourceName = "azurerm_storage_account"

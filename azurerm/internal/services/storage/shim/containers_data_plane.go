@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/containers"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/blob/containers"
 )
 
 type DataPlaneStorageContainerWrapper struct {

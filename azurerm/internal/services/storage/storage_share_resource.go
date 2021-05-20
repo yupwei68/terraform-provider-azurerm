@@ -16,7 +16,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/parse"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/storage/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
-	"github.com/tombuildsstuff/giovanni/storage/2019-12-12/file/shares"
+	"github.com/tombuildsstuff/giovanni/storage/2020-08-04/file/shares"
 )
 
 func resourceStorageShare() *schema.Resource {
