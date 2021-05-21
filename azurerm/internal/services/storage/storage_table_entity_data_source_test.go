@@ -74,6 +74,7 @@ data "azurerm_storage_table_entity" "test" {
   storage_account_name = azurerm_storage_table_entity.test.storage_account_name
   partition_key        = azurerm_storage_table_entity.test.partition_key
   row_key              = azurerm_storage_table_entity.test.row_key
+depends_on = [azurerm_storage_table_entity.test]
 }
 `, config)
 }

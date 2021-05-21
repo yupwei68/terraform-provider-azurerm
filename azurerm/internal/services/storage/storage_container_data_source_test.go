@@ -61,6 +61,8 @@ resource "azurerm_storage_container" "test" {
 data "azurerm_storage_container" "test" {
   name                 = azurerm_storage_container.test.name
   storage_account_name = azurerm_storage_container.test.storage_account_name
+
+depends_on = [azurerm_storage_container.test]
 }
 
 `, data.RandomString, data.Locations.Primary, data.RandomString, data.RandomString)

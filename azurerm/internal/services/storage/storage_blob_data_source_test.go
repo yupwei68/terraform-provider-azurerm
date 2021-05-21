@@ -88,6 +88,8 @@ data "azurerm_storage_blob" "test" {
   name                   = azurerm_storage_blob.test.name
   storage_account_name   = azurerm_storage_blob.test.storage_account_name
   storage_container_name = azurerm_storage_blob.test.storage_container_name
+
+depends_on = [azurerm_storage_blob.test]
 }
 `, config)
 }
