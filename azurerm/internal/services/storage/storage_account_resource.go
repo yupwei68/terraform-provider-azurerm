@@ -1870,12 +1870,12 @@ func expandBlobProperties(input []interface{}) (*storage.BlobServiceProperties, 
 
 	props.RestorePolicy = expandBlobPropertiesRestorePolicy(v["restore_policy"].([]interface{}))
 
-	if *props.RestorePolicy.Enabled && !*props.ContainerDeleteRetentionPolicy.Enabled {
-		return nil, fmt.Errorf("`container_delete_retention_policy` must be enabled when `restore_policy` is enabled")
+	if *props.RestorePolicy.Enabled && (!*props.DeleteRetentionPolicy.Enabled || !*props.IsVersioningEnabled || !*props.ChangeFeed.Enabled) {
+		return nil, fmt.Errorf("`delete_retention_policy`,`versioning_enabled` and `change_feed_enabled` must be enabled when `restore_policy` is enabled")
 	}
 
-	if *props.RestorePolicy.Enabled && !*props.IsVersioningEnabled {
-		return nil, fmt.Errorf("`versioning_enabled` must be enabled when `restore_policy` is enabled")
+	if *props.RestorePolicy.Enabled && *props.DeleteRetentionPolicy.Enabled && (*props.DeleteRetentionPolicy.Days <= *props.RestorePolicy.Days) {
+		return nil, fmt.Errorf("`days` in `delete_retention_policy` should be greater than `days` in `restore_policy`")
 	}
 
 	return &props, nil
