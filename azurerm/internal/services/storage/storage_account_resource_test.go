@@ -924,7 +924,6 @@ func TestAccAzureRMStorageAccount_tableProperties(t *testing.T) {
 	r := StorageAccountResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
-		data.ImportStep(),
 		{
 			Config: r.tableProperties(data),
 			Check: acceptance.ComposeTestCheckFunc(
