@@ -34,6 +34,7 @@ type Client struct {
 	EncryptionScopesClient      *storage.EncryptionScopesClient
 	Environment                 az.Environment
 	ObjectReplicationClient     *storage.ObjectReplicationPoliciesClient
+	TableServicesClient         *storage.TableServicesClient
 	SyncServiceClient           *storagesync.ServicesClient
 	SyncGroupsClient            *storagesync.SyncGroupsClient
 	SubscriptionId              string
@@ -70,6 +71,9 @@ func NewClient(options *common.ClientOptions) *Client {
 	objectReplicationPolicyClient := storage.NewObjectReplicationPoliciesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
 	options.ConfigureClient(&objectReplicationPolicyClient.Client, options.ResourceManagerAuthorizer)
 
+	tableServicesClient := storage.NewTableServicesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
+	options.ConfigureClient(&tableServicesClient.Client, options.ResourceManagerAuthorizer)
+
 	syncServiceClient := storagesync.NewServicesClientWithBaseURI(options.ResourceManagerEndpoint, options.SubscriptionId)
 	options.ConfigureClient(&syncServiceClient.Client, options.ResourceManagerAuthorizer)
 
@@ -89,6 +93,7 @@ func NewClient(options *common.ClientOptions) *Client {
 		EncryptionScopesClient:      &encryptionScopesClient,
 		Environment:                 options.Environment,
 		ObjectReplicationClient:     &objectReplicationPolicyClient,
+		TableServicesClient:         &tableServicesClient,
 		SubscriptionId:              options.SubscriptionId,
 		SyncServiceClient:           &syncServiceClient,
 		SyncGroupsClient:            &syncGroupsClient,
