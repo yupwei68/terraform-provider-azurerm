@@ -89,6 +89,35 @@ func resourceApiManagementUser() *pluginsdk.Resource {
 					string(apimanagement.UserStatePending),
 				}, false),
 			},
+
+			"app_type": {
+				Type:     pluginsdk.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(apimanagement.DeveloperPortal),
+					string(apimanagement.Portal),
+				}, false),
+			},
+
+			"identities": {
+				Type:     pluginsdk.TypeList,
+				Optional: true,
+				Elem: &pluginsdk.Resource{
+					Schema: map[string]*pluginsdk.Schema{
+						"provider": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringIsNotEmpty,
+						},
+						"id": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringIsNotEmpty,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -126,9 +155,10 @@ func resourceApiManagementUserCreateUpdate(d *pluginsdk.ResourceData, meta inter
 
 	properties := apimanagement.UserCreateParameters{
 		UserCreateParameterProperties: &apimanagement.UserCreateParameterProperties{
-			FirstName: utils.String(firstName),
-			LastName:  utils.String(lastName),
-			Email:     utils.String(email),
+			FirstName:  utils.String(firstName),
+			LastName:   utils.String(lastName),
+			Email:      utils.String(email),
+			Identities: expandApiManagementUserIdentity(d.Get("identities").([]interface{})),
 		},
 	}
 
@@ -144,6 +174,10 @@ func resourceApiManagementUserCreateUpdate(d *pluginsdk.ResourceData, meta inter
 	}
 	if state != "" {
 		properties.UserCreateParameterProperties.State = apimanagement.UserState(state)
+	}
+
+	if v, ok := d.GetOk("app_type"); ok {
+		properties.AppType = apimanagement.AppType(v.(string))
 	}
 
 	notify := utils.Bool(false)
@@ -200,6 +234,9 @@ func resourceApiManagementUserRead(d *pluginsdk.ResourceData, meta interface{}) 
 		d.Set("email", props.Email)
 		d.Set("note", props.Note)
 		d.Set("state", string(props.State))
+		if err := d.Set("identities", flattenApiManagementUserIdentity(props.Identities)); err != nil {
+			return fmt.Errorf("setting `identities`:%+v", err)
+		}
 	}
 
 	return nil
@@ -229,4 +266,42 @@ func resourceApiManagementUserDelete(d *pluginsdk.ResourceData, meta interface{}
 	}
 
 	return nil
+}
+
+func expandApiManagementUserIdentity(inputs []interface{}) *[]apimanagement.UserIdentityContract {
+	if len(inputs) == 0 {
+		return nil
+	}
+
+	result := make([]apimanagement.UserIdentityContract, 0)
+	for _, input := range inputs {
+		inputRaw := input.(map[string]interface{})
+		result = append(result, apimanagement.UserIdentityContract{
+			Provider: utils.String(inputRaw["provider"].(string)),
+			ID:       utils.String(inputRaw["id"].(string)),
+		})
+	}
+	return &result
+}
+
+func flattenApiManagementUserIdentity(identities *[]apimanagement.UserIdentityContract) []interface{} {
+	if identities == nil || len(*identities) == 0 {
+		return []interface{}{}
+	}
+
+	result := []interface{}{}
+	for _, identity := range *identities {
+		var provider, id string
+		if identity.Provider != nil {
+			provider = *identity.Provider
+		}
+		if identity.ID != nil {
+			id = *identity.ID
+		}
+		result = append(result, map[string]interface{}{
+			"provider": provider,
+			"id":       id,
+		})
+	}
+	return result
 }

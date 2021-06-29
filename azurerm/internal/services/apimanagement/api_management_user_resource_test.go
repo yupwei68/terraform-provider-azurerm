@@ -165,14 +165,24 @@ func TestAccApiManagementUser_complete(t *testing.T) {
 				check.That(data.ResourceName).Key("note").HasValue("Used for testing in dimension C-137."),
 			),
 		},
+		data.ImportStep("confirmation"),
 		{
-			ResourceName:      data.ResourceName,
-			ImportState:       true,
-			ImportStateVerify: true,
-			ImportStateVerifyIgnore: []string{
-				// not returned
-				"confirmation",
-			},
+			Config: r.completeUpdate(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("first_name").HasValue("Acceptance"),
+				check.That(data.ResourceName).Key("last_name").HasValue("Test"),
+				check.That(data.ResourceName).Key("note").HasValue("Used for testing in dimension C-137."),
+			),
+		},
+		{
+			Config: r.completeUpdate2(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("first_name").HasValue("Acceptance"),
+				check.That(data.ResourceName).Key("last_name").HasValue("Test"),
+				check.That(data.ResourceName).Key("note").HasValue("Used for testing in dimension C-137."),
+			),
 		},
 	})
 }
@@ -310,6 +320,57 @@ resource "azurerm_api_management_user" "test" {
 }
 
 func (r ApiManagementUserResource) complete(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_api_management_user" "test" {
+  user_id             = "acctestuser%d"
+  api_management_name = azurerm_api_management.test.name
+  resource_group_name = azurerm_resource_group.test.name
+  first_name          = "Acceptance"
+  last_name           = "Test"
+  email               = "azure-acctest%d@example.com"
+  state               = "active"
+  confirmation        = "signup"
+  note                = "Used for testing in dimension C-137."
+  app_type            = "developerPortal"
+  identities {
+    provider = "Microsoft.Compute"
+    id       = "testId"
+  }
+}
+`, r.template(data), data.RandomInteger, data.RandomInteger)
+}
+
+func (r ApiManagementUserResource) completeUpdate(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_api_management_user" "test" {
+  user_id             = "acctestuser%d"
+  api_management_name = azurerm_api_management.test.name
+  resource_group_name = azurerm_resource_group.test.name
+  first_name          = "Acceptance"
+  last_name           = "Test"
+  email               = "azure-acctest%d@example.com"
+  state               = "active"
+  confirmation        = "signup"
+  note                = "Used for testing in dimension C-137."
+  app_type            = "portal"
+  identities {
+    provider = "testProvider"
+    id       = "testId"
+  }
+
+  identities {
+    provider = "testProvider2"
+    id       = "testId2"
+  }
+}
+`, r.template(data), data.RandomInteger, data.RandomInteger)
+}
+
+func (r ApiManagementUserResource) completeUpdate2(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
