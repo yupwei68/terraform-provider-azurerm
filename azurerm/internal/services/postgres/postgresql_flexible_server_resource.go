@@ -165,8 +165,9 @@ func resourcePostgresqlFlexibleServer() *pluginsdk.Resource {
 			},
 
 			"cmk_enabled": {
-				Type:     pluginsdk.TypeString,
-				Computed: true,
+				Type:       pluginsdk.TypeString,
+				Computed:   true,
+				Deprecated: "This field is deprecated and will be removed in version 3.0 of the Azure Provider",
 			},
 
 			"fqdn": {
@@ -177,6 +178,7 @@ func resourcePostgresqlFlexibleServer() *pluginsdk.Resource {
 			"public_network_access_enabled": {
 				Type:     pluginsdk.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 
 			"tags": tags.Schema(),
@@ -253,10 +255,7 @@ func resourcePostgresqlFlexibleServerCreate(d *pluginsdk.ResourceData, meta inte
 			},
 			Version: postgresqlflexibleservers.ServerVersion(d.Get("version").(string)),
 			Storage: &postgresqlflexibleservers.Storage{
-				StorageSizeGB: utils.Int32(int32(d.Get("storage_mb").(int))),
-			},
-			Backup: &postgresqlflexibleservers.Backup{
-				BackupRetentionDays: utils.Int32(int32(d.Get("backup_retention_days").(int))),
+				StorageSizeGB: utils.Int32(int32(d.Get("storage_mb").(int) / 1024)),
 			},
 		},
 		Sku:  sku,
@@ -277,6 +276,12 @@ func resourcePostgresqlFlexibleServerCreate(d *pluginsdk.ResourceData, meta inte
 
 	if v, ok := d.GetOk("source_server_id"); ok && v.(string) != "" {
 		parameters.ServerProperties.SourceServerResourceID = utils.String(v.(string))
+	}
+
+	if v, ok := d.GetOk("backup_retention_days"); ok {
+		parameters.ServerProperties.Backup = &postgresqlflexibleservers.Backup{
+			BackupRetentionDays: utils.Int32(int32(v.(int))),
+		}
 	}
 
 	pointInTimeUTC := d.Get("point_in_time_restore_time_in_utc").(string)
@@ -347,7 +352,6 @@ func resourcePostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta interf
 		d.Set("zone", props.AvailabilityZone)
 		d.Set("source_server_id", props.SourceServerResourceID)
 		d.Set("version", props.Version)
-		d.Set("cmk_enabled", props.ByokEnforcement)
 		d.Set("fqdn", props.FullyQualifiedDomainName)
 
 		if props.Network != nil {
@@ -360,7 +364,7 @@ func resourcePostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta interf
 		}
 
 		if storage := props.Storage; storage != nil {
-			d.Set("storage_mb", storage.StorageSizeGB)
+			d.Set("storage_mb", (*storage.StorageSizeGB)*1024)
 		}
 
 		if backup := props.Backup; backup != nil {
@@ -399,7 +403,7 @@ func resourcePostgresqlFlexibleServerUpdate(d *pluginsdk.ResourceData, meta inte
 
 	if d.HasChange("storage_mb") {
 		parameters.ServerPropertiesForUpdate.Storage = &postgresqlflexibleservers.Storage{
-			StorageSizeGB: utils.Int32(int32(d.Get("storage_mb").(int))),
+			StorageSizeGB: utils.Int32(int32(d.Get("storage_mb").(int) / 1024)),
 		}
 	}
 
@@ -461,13 +465,13 @@ func resourcePostgresqlFlexibleServerDelete(d *pluginsdk.ResourceData, meta inte
 func expandArmServerMaintenanceWindow(input []interface{}) *postgresqlflexibleservers.MaintenanceWindow {
 	if len(input) == 0 {
 		return &postgresqlflexibleservers.MaintenanceWindow{
-			CustomWindow: utils.String("disabled"),
+			CustomWindow: utils.String("Disabled"),
 		}
 	}
 	v := input[0].(map[string]interface{})
 
 	maintenanceWindow := postgresqlflexibleservers.MaintenanceWindow{
-		CustomWindow: utils.String(string("enabled")),
+		CustomWindow: utils.String(string("Enabled")),
 		StartHour:    utils.Int32(int32(v["start_hour"].(int))),
 		StartMinute:  utils.Int32(int32(v["start_minute"].(int))),
 		DayOfWeek:    utils.Int32(int32(v["day_of_week"].(int))),
@@ -521,7 +525,7 @@ func flattenFlexibleServerSku(sku *postgresqlflexibleservers.Sku) (string, error
 }
 
 func flattenArmServerMaintenanceWindow(input *postgresqlflexibleservers.MaintenanceWindow) []interface{} {
-	if input == nil || input.CustomWindow == nil || *input.CustomWindow == "disabled" {
+	if input == nil || input.CustomWindow == nil || *input.CustomWindow == "Disabled" {
 		return make([]interface{}, 0)
 	}
 

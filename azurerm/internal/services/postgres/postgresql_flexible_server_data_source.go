@@ -64,8 +64,9 @@ func dataSourcePostgresqlFlexibleServer() *pluginsdk.Resource {
 			},
 
 			"cmk_enabled": {
-				Type:     pluginsdk.TypeString,
-				Computed: true,
+				Type:       pluginsdk.TypeString,
+				Computed:   true,
+				Deprecated: "This field is deprecated and will be removed in version 3.0 of the Azure Provider",
 			},
 
 			"fqdn": {
@@ -108,9 +109,7 @@ func dataSourceArmPostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta i
 	d.Set("location", location.NormalizeNilable(resp.Location))
 	if props := resp.ServerProperties; props != nil {
 		d.Set("administrator_login", props.AdministratorLogin)
-		d.Set("storage_mb", props.Storage.StorageSizeGB)
 		d.Set("version", props.Version)
-		d.Set("cmk_enabled", props.ByokEnforcement)
 		d.Set("fqdn", props.FullyQualifiedDomainName)
 
 		if props.Network != nil {
@@ -119,7 +118,7 @@ func dataSourceArmPostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta i
 		}
 
 		if storage := props.Storage; storage != nil {
-			d.Set("storage_mb", storage.StorageSizeGB)
+			d.Set("storage_mb", (*storage.StorageSizeGB)*1024)
 		}
 
 		if backup := props.Backup; backup != nil {
