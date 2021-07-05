@@ -291,17 +291,22 @@ resource "azurerm_subnet" "test" {
 }
 
 resource "azurerm_postgresql_flexible_server" "test" {
-  name                   = "acctest-fs-%[2]d"
-  resource_group_name    = azurerm_resource_group.test.name
-  location               = azurerm_resource_group.test.location
-  administrator_login    = "adminTerraform"
-  administrator_password = "QAZwsx123"
-  zone                   = "1"
-  version                = "12"
-  backup_retention_days  = 7
-  storage_mb             = 32768
-  delegated_subnet_id    = azurerm_subnet.test.id
-  sku_name               = "GP_Standard_D2s_v3"
+  name                         = "acctest-fs-%[2]d"
+  resource_group_name          = azurerm_resource_group.test.name
+  location                     = azurerm_resource_group.test.location
+  administrator_login          = "adminTerraform"
+  administrator_password       = "QAZwsx123"
+  zone                         = "1"
+  version                      = "12"
+  backup_retention_days        = 7
+  storage_mb                   = 32768
+  delegated_subnet_id          = azurerm_subnet.test.id
+  sku_name                     = "GP_Standard_D2s_v3"
+  geo_redundant_backup_enabled = true
+
+  high_availability {
+    standby_availability_zone = "1"
+  }
 
   maintenance_window {
     day_of_week  = 0
@@ -345,17 +350,18 @@ resource "azurerm_subnet" "test" {
 }
 
 resource "azurerm_postgresql_flexible_server" "test" {
-  name                   = "acctest-fs-%[2]d"
-  resource_group_name    = azurerm_resource_group.test.name
-  location               = azurerm_resource_group.test.location
-  administrator_login    = "adminTerraform"
-  administrator_password = "123wsxQAZ"
-  zone                   = "1"
-  version                = "12"
-  backup_retention_days  = 10
-  storage_mb             = 65536
-  delegated_subnet_id    = azurerm_subnet.test.id
-  sku_name               = "GP_Standard_D2s_v3"
+  name                         = "acctest-fs-%[2]d"
+  resource_group_name          = azurerm_resource_group.test.name
+  location                     = azurerm_resource_group.test.location
+  administrator_login          = "adminTerraform"
+  administrator_password       = "123wsxQAZ"
+  zone                         = "1"
+  version                      = "12"
+  backup_retention_days        = 10
+  storage_mb                   = 65536
+  delegated_subnet_id          = azurerm_subnet.test.id
+  sku_name                     = "GP_Standard_D2s_v3"
+  geo_redundant_backup_enabled = false
 
   maintenance_window {
     day_of_week  = 0
