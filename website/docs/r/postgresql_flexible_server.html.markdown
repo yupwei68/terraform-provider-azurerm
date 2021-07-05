@@ -113,7 +113,7 @@ In addition to the Arguments listed above - the following Attributes are exporte
 
 * `id` - The ID of the PostgreSQL Flexible Server.
 
-* `cmk_enabled` - The status showing whether the data encryption is enabled with a customer-managed key.
+* `cmk_enabled` - (**Deprecated**) The status showing whether the data encryption is enabled with a customer-managed key.
 
 * `fqdn` - The FQDN of the PostgreSQL Flexible Server.
 

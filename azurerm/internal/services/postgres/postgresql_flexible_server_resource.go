@@ -177,8 +177,7 @@ func resourcePostgresqlFlexibleServer() *pluginsdk.Resource {
 
 			"public_network_access_enabled": {
 				Type:     pluginsdk.TypeBool,
-				Optional: true,
-				Default:  true,
+				Computed: true,
 			},
 
 			"tags": tags.Schema(),
@@ -240,17 +239,11 @@ func resourcePostgresqlFlexibleServerCreate(d *pluginsdk.ResourceData, meta inte
 		return fmt.Errorf("expanding `sku_name` for PostgreSQL Flexible Server %s (Resource Group %q): %v", id.Name, id.ResourceGroup, err)
 	}
 
-	publicNetworkAccess := postgresqlflexibleservers.ServerPublicNetworkAccessStateDisabled
-	if d.Get("public_network_access_enabled").(bool) {
-		publicNetworkAccess = postgresqlflexibleservers.ServerPublicNetworkAccessStateEnabled
-	}
-
 	parameters := postgresqlflexibleservers.Server{
 		Location: utils.String(location.Normalize(d.Get("location").(string))),
 		ServerProperties: &postgresqlflexibleservers.ServerProperties{
 			CreateMode: postgresqlflexibleservers.CreateMode(d.Get("create_mode").(string)),
 			Network: &postgresqlflexibleservers.Network{
-				PublicNetworkAccess:       publicNetworkAccess,
 				DelegatedSubnetResourceID: utils.String(d.Get("delegated_subnet_id").(string)),
 			},
 			Version: postgresqlflexibleservers.ServerVersion(d.Get("version").(string)),
@@ -350,7 +343,6 @@ func resourcePostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta interf
 	if props := resp.ServerProperties; props != nil {
 		d.Set("administrator_login", props.AdministratorLogin)
 		d.Set("zone", props.AvailabilityZone)
-		d.Set("source_server_id", props.SourceServerResourceID)
 		d.Set("version", props.Version)
 		d.Set("fqdn", props.FullyQualifiedDomainName)
 
