@@ -385,7 +385,7 @@ func resourcePostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta interf
 
 		if backup := props.Backup; backup != nil {
 			d.Set("backup_retention_days", backup.BackupRetentionDays)
-			d.Set("geo_redundant_backup_enabled", backup.GeoRedundantBackup)
+			d.Set("geo_redundant_backup_enabled", backup.GeoRedundantBackup == postgresqlflexibleservers.GeoRedundantBackupEnumEnabled)
 		}
 
 		if err := d.Set("high_availability", flattenFlexibleServerHighAvailability(props.HighAvailability)); err != nil {
